@@ -6,6 +6,7 @@ struct PomodoroApp: App {
     @State private var settings: Settings
     private let notificationService: NotificationService
     private let soundService: SoundService
+    private let shortcutService: GlobalShortcutService
 
     init() {
         let settings = Settings()
@@ -18,10 +19,29 @@ struct PomodoroApp: App {
             soundService.playSessionComplete(sessionType)
         }
 
+        let shortcutService = GlobalShortcutService()
+        shortcutService.register(shortcuts: [
+            .startPause: .ctrlOptionP,
+            .skip: .ctrlOptionS,
+            .reset: .ctrlOptionR
+        ]) { action in
+            switch action {
+            case .startPause:
+                if engine.state.isRunning { engine.pause() }
+                else if engine.state.isPaused { engine.resume() }
+                else if engine.state == .idle { engine.start() }
+            case .skip:
+                engine.skip()
+            case .reset:
+                engine.cancel()
+            }
+        }
+
         self._engine = State(initialValue: engine)
         self._settings = State(initialValue: settings)
         self.notificationService = notificationService
         self.soundService = soundService
+        self.shortcutService = shortcutService
     }
 
     var body: some Scene {
