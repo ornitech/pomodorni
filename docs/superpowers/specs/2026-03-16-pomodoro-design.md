@@ -4,8 +4,8 @@
 
 A native macOS menu bar pomodoro timer built with SwiftUI. Lives in the system status bar with a popover UI. Features configurable timers, three swappable visual themes, global keyboard shortcuts, system sounds, and auto-start chaining.
 
-**Target:** macOS 13+ (Ventura)
-**Language:** Swift, SwiftUI
+**Target:** macOS 14+ (Sonoma) — required for `@Observable` macro (Observation framework)
+**Language:** Swift 5.9+, SwiftUI
 **Architecture:** Three-layer (Core → Theme → UI)
 
 ## Requirements
@@ -15,13 +15,13 @@ A native macOS menu bar pomodoro timer built with SwiftUI. Lives in the system s
 - Configurable short break timer (default 5 min, range 1–30 min)
 - Configurable long break timer (default 15 min, range 1–60 min)
 - Long break every N work sessions (default 4, configurable)
-- Cancel an ongoing session (returns to idle)
+- Cancel an ongoing session (returns to idle, preserves completed pomodoro count)
 - Restart an ongoing session (resets current timer to full duration)
 - Native macOS notifications when work sessions and breaks complete
-- Completed pomodoro count display
+- Completed pomodoro count display (interval counter resets after long break; total count persists until app quit)
 
 ### Additional Features
-- **Global keyboard shortcuts** (configurable, defaults: Ctrl+Option+P start/pause, Ctrl+Option+S skip, Ctrl+Option+R cancel/reset)
+- **Global keyboard shortcuts** (configurable, defaults: Ctrl+Option+P start/pause, Ctrl+Option+S skip, Ctrl+Option+R reset)
 - **System sounds** — macOS system sounds on session/break completion, toggleable
 - **Auto-start** — Toggleable option to automatically chain work→break→work without manual intervention
 
@@ -45,6 +45,7 @@ All business logic lives here. Depends only on Foundation and UserNotifications.
 - `.idle`
 - `.running(SessionType)`
 - `.paused(SessionType)`
+- `.completed(SessionType)` — Transient state after a session ends when auto-start is disabled. Shows completion message and a button to start the next session.
 
 #### `TimerEngine` (@Observable class)
 The central state machine. Owns the countdown timer.
@@ -60,23 +61,30 @@ The central state machine. Owns the countdown timer.
 - `pause()` — Pause the current session
 - `resume()` — Resume a paused session
 - `skip()` — End current session/break early, transition to next
-- `cancel()` — Stop and return to idle, reset pomodoro count
+- `cancel()` — Stop and return to idle. Preserves `completedPomodoros` count (user does not lose progress). Resets the interval counter only if explicitly desired via a separate reset action.
 - `restart()` — Reset current timer to full duration, stay in same session type
 
 **State transitions:**
 ```
-idle → running(work) → running(shortBreak/longBreak) → running(work) → ...
-             ↕                       ↕
-         paused(work)         paused(break)
+idle → running(work) → completed(work) or running(break)
+                            ↓
+                      running(break) → completed(break) or running(work)
+
+running ↔ paused  (any running state can be paused/resumed)
+Any state → idle   (via cancel())
 ```
 
-Any state can transition to `idle` via `cancel()`.
+When auto-start is enabled, `completed` states are skipped — transitions go directly from one running state to the next. Any state can transition to `idle` via `cancel()`.
 
-**Auto-start flow:** When a session completes, if auto-start is enabled, automatically transition to the next session type. If disabled, transition to `idle`.
+**Auto-start flow:** When a session completes, if auto-start is enabled, automatically transition to the next session type. If disabled, transition to `.completed(SessionType)` — a transient state that shows "Session complete!" with a button to manually start the next session. The idle state is only reached via explicit `cancel()`.
 
-**Long break logic:** After N completed work sessions, the next break is a long break. Counter resets after a long break.
+**Long break logic:** Two counters:
+- `completedPomodoros: Int` — Total completed work sessions this app session. Displayed in the UI. Resets on app quit (not persisted). Not affected by `cancel()`.
+- `intervalCounter: Int` — Internal counter tracking work sessions since last long break. After N sessions, the next break is long. Resets to 0 after a long break completes.
 
-**Timer implementation:** Uses a `TimeProvider` protocol for the clock source. Production uses `DispatchSourceTimer`; tests inject a controllable mock.
+**Settings changes mid-session:** Duration changes apply to the *next* session, not the currently running one. This avoids confusion (e.g., timer jumping from 18:00 to 8:00 if work duration is reduced).
+
+**Timer implementation:** Uses a `TimeProvider` protocol for the clock source. Production uses `DispatchSourceTimer`; tests inject a controllable mock. The production timer uses `ProcessInfo.processInfo.beginActivity(options: .userInitiated, reason: "Pomodoro timer active")` to prevent App Nap from suspending the timer while a session is running.
 
 #### `Settings` (@Observable class, backed by UserDefaults/@AppStorage)
 - `workDuration: Int` (minutes, 1–60, default 25)
@@ -96,7 +104,7 @@ Wraps `UNUserNotificationCenter`. Depends on a `NotificationProvider` protocol f
 - Sends notification with appropriate title/body per session type:
   - Work complete: "Work session complete — time for a break!"
   - Break complete: "Break's over — ready to focus?"
-- Handles permission denied gracefully (no crash, features degrade)
+- Handles permission denied gracefully: shows a one-time dismissable banner in the popover explaining that notifications are disabled, with a button to open System Settings. No crash, no repeated prompts.
 
 #### `SoundService`
 Wraps `NSSound` for playing system sounds. Depends on a `SoundProvider` protocol.
@@ -108,23 +116,29 @@ Wraps `NSSound` for playing system sounds. Depends on a `SoundProvider` protocol
 ### Layer 2: Theme System
 
 #### `PomodoroTheme` protocol
+
+Uses associated types and `@ViewBuilder` to avoid `AnyView` type erasure (which defeats SwiftUI's diffing engine). A `ThemeContainer` view wraps the generic theme in a type-erased container at the point of use.
+
 ```swift
 protocol PomodoroTheme {
+    associatedtype TimerBody: View
+    associatedtype ControlsBody: View
+
     var id: ThemeIdentifier { get }
     var name: String { get }
-    var backgroundColor: Color { get }
-    var accentColor: Color { get }
-    var textColor: Color { get }
-    var secondaryTextColor: Color { get }
-    func timerView(remainingSeconds: Int, totalSeconds: Int, sessionType: SessionType, state: TimerState) -> AnyView
-    func controlsView(state: TimerState, onStart: () -> Void, onPause: () -> Void, onResume: () -> Void, onSkip: () -> Void, onCancel: () -> Void, onRestart: () -> Void) -> AnyView
+
+    @ViewBuilder func timerView(remainingSeconds: Int, totalSeconds: Int, sessionType: SessionType, state: TimerState) -> TimerBody
+    @ViewBuilder func controlsView(state: TimerState, onStart: () -> Void, onPause: () -> Void, onResume: () -> Void, onSkip: () -> Void, onCancel: () -> Void, onRestart: () -> Void) -> ControlsBody
 }
 ```
 
+Color properties (background, accent, text) are managed internally by each theme's views rather than exposed on the protocol — this keeps the protocol focused on view composition and lets each theme fully own its visual identity, including dark mode adaptation.
+
 #### Themes
-- **MinimalTheme** — White/dark mode adaptive background, indigo accent, thin `Circle().trim()` progress ring, SF Symbol buttons, SF Mono timer digits
-- **GlassmorphicTheme** — `.ultraThinMaterial` background, soft gradient shifts (cool for work, warm for break), rounded frosted panels, subtle shadows
-- **BoldTheme** — Deep red (work) / green (short break) / blue (long break), thick animated progress ring, bouncy button transitions
+All themes support both light and dark mode (respecting system appearance):
+- **MinimalTheme** — Light/dark adaptive background, indigo accent, thin `Circle().trim()` progress ring, SF Symbol buttons, SF Mono timer digits
+- **GlassmorphicTheme** — `.ultraThinMaterial` background (adapts automatically to light/dark), soft gradient shifts (cool for work, warm for break), rounded frosted panels, subtle shadows
+- **BoldTheme** — Deep red (work) / green (short break) / blue (long break), thick animated progress ring, bouncy button transitions. Colors slightly adjusted for dark mode contrast.
 
 ### Layer 3: UI (SwiftUI)
 
@@ -153,10 +167,11 @@ Slides into the popover, replacing the timer view. Contains:
 - Back button to return to timer
 
 #### Global Keyboard Shortcuts
-- Registered via `NSEvent.addGlobalMonitorForEvents` (requires Accessibility permission)
-- App prompts for permission on first use with a clear explanation
+- Registered via Carbon's `RegisterEventHotKey` API — the standard macOS approach for global hotkeys. Unlike `NSEvent.addGlobalMonitorForEvents` (which only observes and cannot consume events, and requires Accessibility permission), `RegisterEventHotKey` reliably registers exclusive system-wide hotkeys without Accessibility permission.
+- Wrapped in a `GlobalShortcutService` that manages registration/unregistration lifecycle
 - Shortcuts configurable via a key recorder in settings
-- Defaults: Ctrl+Option+P (start/pause), Ctrl+Option+S (skip), Ctrl+Option+R (cancel/reset)
+- Defaults: Ctrl+Option+P (start/pause), Ctrl+Option+S (skip), Ctrl+Option+R (reset)
+- When shortcuts conflict with another app's registered hotkey, registration fails silently and the user is shown a note in settings
 
 ## Testing Strategy
 
@@ -173,7 +188,8 @@ All external dependencies are behind protocols for mockability:
 - **SoundServiceTests** — Correct sound per event, respects sound-off setting, silent failure
 
 ### View/Theme Tests
-- Each theme renders correctly for each state combination (idle, running work, running break, paused)
+- Use `swift-snapshot-testing` (pointfreeco) for visual regression tests of each theme in each state (idle, running work, running break, paused, completed)
+- Snapshots captured in both light and dark mode
 - Theme switching produces expected view hierarchy
 
 ### Integration Tests
@@ -192,6 +208,7 @@ Pomodoro/
 │   ├── Settings.swift
 │   ├── NotificationService.swift
 │   ├── SoundService.swift
+│   ├── GlobalShortcutService.swift
 │   └── Protocols/
 │       ├── TimeProvider.swift
 │       ├── NotificationProvider.swift
@@ -199,6 +216,7 @@ Pomodoro/
 ├── Themes/
 │   ├── PomodoroTheme.swift        # Protocol
 │   ├── ThemeIdentifier.swift
+│   ├── ThemeContainer.swift       # Type-erased wrapper for generic themes
 │   ├── MinimalTheme/
 │   │   └── MinimalTheme.swift
 │   ├── GlassmorphicTheme/
@@ -217,10 +235,17 @@ Pomodoro/
     │   ├── NotificationServiceTests.swift
     │   └── SoundServiceTests.swift
     ├── Themes/
-    │   └── ThemeTests.swift
+    │   └── ThemeSnapshotTests.swift  # swift-snapshot-testing based
     └── Integration/
         └── PomodoroFlowTests.swift
 ```
+
+## App Lifecycle
+
+- **LSUIElement:** Set `LSUIElement = YES` in Info.plist to hide the Dock icon (menu-bar-only app)
+- **State on quit/relaunch:** Timer state is NOT persisted. App always starts in idle. `completedPomodoros` resets on quit.
+- **Popover dismissal:** When the popover closes (user clicks away), all state is preserved. Reopening shows the same timer state, settings panel position, etc. The timer continues running in the background.
+- **Launch at login:** Not in initial scope (can be added later via `SMAppService`)
 
 ## Non-Goals (explicitly excluded)
 - Session history / statistics tracking
