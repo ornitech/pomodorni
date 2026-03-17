@@ -140,8 +140,13 @@ jobs:
           size = os.environ["DMG_SIZE"]
 
           if os.path.exists(appcast_path):
-              tree = ET.parse(appcast_path)
-              root = tree.getroot()
+              # Ensure xmlns:sparkle is present before parsing (older writes may have dropped it)
+              with open(appcast_path, "r") as f:
+                  xml_str = f.read()
+              if "xmlns:sparkle" not in xml_str:
+                  xml_str = xml_str.replace('<rss ', f'<rss xmlns:sparkle="{ns}" ', 1)
+              root = ET.fromstring(xml_str)
+              tree = ET.ElementTree(root)
               channel = root.find("channel")
           else:
               root = ET.fromstring(
