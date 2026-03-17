@@ -54,9 +54,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Icon item: fixed square width, never changes position.
+        // Icon item: tight fixed width, never changes position.
         // Created FIRST so it appears to the RIGHT in the menu bar.
-        iconItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        iconItem = NSStatusBar.system.statusItem(withLength: 22)
         if let button = iconItem.button {
             button.image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Pomodoro")
             button.image?.isTemplate = true
@@ -65,9 +65,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
-        // Timer item: variable width, shows countdown text.
+        // Timer item: fixed width for countdown text.
         // Created SECOND so it appears to the LEFT of the icon.
-        timerItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        // Fixed width prevents per-digit size changes. "00:00" in
+        // monospacedDigit font is ~42pt.
+        timerItem = NSStatusBar.system.statusItem(withLength: 44)
         timerItem.isVisible = false
 
         // Create popover with SwiftUI content
