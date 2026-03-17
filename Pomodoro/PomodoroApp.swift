@@ -119,17 +119,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if popover.isShown {
             popover.performClose(nil)
         } else {
-            // Anchor on the icon itself. The icon is always at the right
-            // edge of the button (imagePosition = .imageRight).
-            let imageWidth = button.image?.size.width ?? 18
-            let iconCenterX = button.bounds.maxX - imageWidth / 2
-            let anchorRect = NSRect(
-                x: iconCenterX,
-                y: button.bounds.minY,
-                width: 1,
-                height: button.bounds.height
-            )
-            popover.show(relativeTo: anchorRect, of: button, preferredEdge: .minY)
+            // Show the popover then manually reposition its window so
+            // the arrow always points at the icon. The icon is pinned
+            // to the right edge of the status item (imagePosition = .imageRight).
+            // Status items grow leftward in the menu bar, so the right
+            // edge (and the icon) stay at a fixed screen-x.
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+
+            if let popoverWindow = popover.contentViewController?.view.window,
+               let buttonWindow = button.window {
+                // Screen position of the icon center
+                let iconScreenX = buttonWindow.frame.maxX - (button.image?.size.width ?? 18) / 2
+                // Move popover so its center aligns with the icon
+                let popoverCenterX = popoverWindow.frame.midX
+                let offset = iconScreenX - popoverCenterX
+                popoverWindow.setFrameOrigin(NSPoint(
+                    x: popoverWindow.frame.origin.x + offset,
+                    y: popoverWindow.frame.origin.y
+                ))
+            }
+
             popover.contentViewController?.view.window?.makeKey()
         }
     }
