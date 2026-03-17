@@ -7,7 +7,14 @@ Things you need to do that can't be automated from the CLI.
 - [ ] **Create GitHub organization "ornitech"** — https://github.com/organizations/new (free)
 - [ ] **Create repo `ornitech/pomodorni`** — transfer or push the pomodoro project here
 - [ ] **Create repo `ornitech/homebrew-tap`** — empty repo for the Homebrew tap
-- [ ] **Generate Sparkle EdDSA keypair** — run the generate_keys tool after Sparkle is integrated (I'll add instructions)
+- [ ] **Generate Sparkle EdDSA keypair** — download the Sparkle release matching the version in `Package.resolved` (currently 2.9.0), then run:
+  ```bash
+  SPARKLE_VERSION=2.9.0
+  curl -sL "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" -o /tmp/sparkle.tar.xz
+  mkdir -p /tmp/sparkle && tar xf /tmp/sparkle.tar.xz -C /tmp/sparkle
+  /tmp/sparkle/bin/generate_keys
+  ```
+  This prints a public key and saves the private key to your keychain. Copy the public key into `Pomodorni/Info.plist` (replace `PLACEHOLDER_PUBLIC_KEY` in `SUPublicEDKey`). Export the private key and save it as the `SPARKLE_PRIVATE_KEY` GitHub Actions secret.
 - [ ] **Add GitHub Actions secrets:**
   - `SPARKLE_PRIVATE_KEY` — Sparkle EdDSA private key (from generate_keys tool)
   - `HOMEBREW_TAP_TOKEN` — GitHub PAT with `repo` scope, for dispatching to `ornitech/homebrew-tap`
