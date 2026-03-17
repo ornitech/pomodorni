@@ -23,8 +23,13 @@ struct SettingsView: View {
     private var header: some View {
         HStack {
             Button(action: onDismiss) {
-                Image(systemName: "chevron.left")
-                Text("Back")
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.left")
+                    Text("Back")
+                }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 8)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             Spacer()
