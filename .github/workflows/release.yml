@@ -1,0 +1,200 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    timeout-minutes: 20
+    if: "!contains(github.event.head_commit.message, '[skip-release]')"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version bump
+        id: version
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "Latest tag: ${LATEST_TAG:-none}"
+
+          if [ -z "$LATEST_TAG" ]; then
+            NEW_VERSION="1.0.0"
+          else
+            VERSION="${LATEST_TAG#v}"
+            MAJOR=$(echo "$VERSION" | cut -d. -f1)
+            MINOR=$(echo "$VERSION" | cut -d. -f2)
+            PATCH=$(echo "$VERSION" | cut -d. -f3)
+
+            COMMIT_MSG=$(git log -1 --pretty=%s)
+            echo "Commit message: $COMMIT_MSG"
+
+            if echo "$COMMIT_MSG" | grep -qi '\[major\]'; then
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+            elif echo "$COMMIT_MSG" | grep -qi '\[minor\]'; then
+              MINOR=$((MINOR + 1))
+              PATCH=0
+            else
+              PATCH=$((PATCH + 1))
+            fi
+
+            NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          fi
+
+          NEW_TAG="v${NEW_VERSION}"
+          echo "New version: $NEW_VERSION (tag: $NEW_TAG)"
+
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        run: |
+          git tag "${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Build and create DMG
+        run: make dmg VERSION=${{ steps.version.outputs.version }}
+
+      - name: Download Sparkle tools
+        id: sparkle-tools
+        run: |
+          SPARKLE_VERSION=$(python3 -c "
+          import json
+          with open('Package.resolved') as f:
+              data = json.load(f)
+          for pin in data.get('pins', []):
+              if 'sparkle' in pin.get('identity', '').lower():
+                  state = pin.get('state', {})
+                  print(state.get('version', '2.6.4'))
+                  break
+          else:
+              print('2.6.4')
+          ")
+          echo "Sparkle version: $SPARKLE_VERSION"
+
+          curl -sL "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" -o /tmp/sparkle.tar.xz
+          mkdir -p /tmp/sparkle && tar xf /tmp/sparkle.tar.xz -C /tmp/sparkle
+          chmod +x /tmp/sparkle/bin/sign_update
+          echo "tool_path=/tmp/sparkle/bin/sign_update" >> "$GITHUB_OUTPUT"
+
+      - name: Sign DMG with Sparkle
+        if: ${{ secrets.SPARKLE_PRIVATE_KEY != '' }}
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        id: sign
+        run: |
+          RAW_OUTPUT=$("${{ steps.sparkle-tools.outputs.tool_path }}" ".build/Pomodorni.dmg" -f <(echo "$SPARKLE_PRIVATE_KEY"))
+          ED_SIGNATURE=$(echo "$RAW_OUTPUT" | grep -o 'sparkle:edSignature="[^"]*"' | sed 's/sparkle:edSignature="//;s/"//')
+          echo "signature=$ED_SIGNATURE" >> "$GITHUB_OUTPUT"
+          echo "DMG signed successfully"
+
+      - name: Update appcast on gh-pages
+        if: steps.sign.outputs.signature != ''
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+          SIGNATURE: ${{ steps.sign.outputs.signature }}
+        run: |
+          DMG_SIZE=$(stat -f%z .build/Pomodorni.dmg)
+          DATE=$(date -u +"%a, %d %b %Y %H:%M:%S %z")
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/Pomodorni.dmg"
+
+          git worktree remove /tmp/gh-pages 2>/dev/null || true
+          rm -rf /tmp/gh-pages
+
+          git fetch origin gh-pages 2>/dev/null || true
+          if git rev-parse --verify origin/gh-pages >/dev/null 2>&1; then
+            git worktree add /tmp/gh-pages origin/gh-pages
+          else
+            git worktree add --detach /tmp/gh-pages
+            cd /tmp/gh-pages
+            git checkout --orphan gh-pages
+            git rm -rf . 2>/dev/null || true
+            cd -
+          fi
+
+          export VERSION DATE DOWNLOAD_URL SIGNATURE DMG_SIZE
+
+          python3 << 'PYEOF'
+          import xml.etree.ElementTree as ET
+          import os
+
+          appcast_path = "/tmp/gh-pages/appcast.xml"
+          ns = "http://www.andymatuschak.org/xml-namespaces/sparkle"
+          ET.register_namespace("sparkle", ns)
+
+          version = os.environ["VERSION"]
+          date = os.environ["DATE"]
+          url = os.environ["DOWNLOAD_URL"]
+          sig = os.environ["SIGNATURE"]
+          size = os.environ["DMG_SIZE"]
+
+          if os.path.exists(appcast_path):
+              tree = ET.parse(appcast_path)
+              root = tree.getroot()
+              channel = root.find("channel")
+          else:
+              root = ET.fromstring(
+                  f'<rss version="2.0" xmlns:sparkle="{ns}">'
+                  f'<channel><title>Pomodorni Updates</title></channel>'
+                  f'</rss>'
+              )
+              tree = ET.ElementTree(root)
+              channel = root.find("channel")
+
+          item = ET.SubElement(channel, "item")
+          ET.SubElement(item, "title").text = f"Version {version}"
+          ET.SubElement(item, "pubDate").text = date
+          ET.SubElement(item, "sparkle:version").text = version
+          enclosure = ET.SubElement(item, "enclosure")
+          enclosure.set("url", url)
+          enclosure.set("sparkle:edSignature", sig)
+          enclosure.set("length", size)
+          enclosure.set("type", "application/octet-stream")
+
+          tree.write(appcast_path, xml_declaration=True, encoding="utf-8")
+          PYEOF
+
+          cd /tmp/gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add appcast.xml
+          git commit -m "chore: update appcast for ${TAG} [skip-release]"
+          git push origin gh-pages
+          cd -
+          git worktree remove /tmp/gh-pages
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Pomodorni ${{ steps.version.outputs.version }}
+          files: .build/Pomodorni.dmg
+          generate_release_notes: true
+
+      - name: Notify Homebrew tap
+        if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          DMG_SHA256=$(shasum -a 256 .build/Pomodorni.dmg | awk '{print $1}')
+          curl -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: token $HOMEBREW_TAP_TOKEN" \
+            "https://api.github.com/repos/ornitech/homebrew-tap/dispatches" \
+            -d "{
+              \"event_type\": \"update-cask\",
+              \"client_payload\": {
+                \"version\": \"${{ steps.version.outputs.version }}\",
+                \"tag\": \"${{ steps.version.outputs.tag }}\",
+                \"sha256\": \"$DMG_SHA256\",
+                \"url\": \"https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/Pomodorni.dmg\"
+              }
+            }"
