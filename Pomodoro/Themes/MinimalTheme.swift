@@ -4,6 +4,10 @@ struct MinimalTheme: PomodoroTheme {
     let id = ThemeIdentifier.minimal
     let name = "Minimal"
 
+    func popoverBackground(sessionType: SessionType?) -> some View {
+        EmptyView()
+    }
+
     func timerView(remainingSeconds: Int, totalSeconds: Int, sessionType: SessionType, state: TimerState) -> some View {
         let progress = totalSeconds > 0 ? Double(remainingSeconds) / Double(totalSeconds) : 0
         VStack(spacing: 16) {
@@ -18,10 +22,10 @@ struct MinimalTheme: PomodoroTheme {
                     trackColor: Color(.separatorColor),
                     progressColor: .indigo
                 )
-                .frame(width: 160, height: 160)
+                .frame(width: 130, height: 130)
 
                 Text(formatTime(remainingSeconds))
-                    .font(.system(size: 42, weight: .light, design: .monospaced))
+                    .font(.system(size: 36, weight: .light, design: .monospaced))
                     .foregroundStyle(.primary)
             }
         }

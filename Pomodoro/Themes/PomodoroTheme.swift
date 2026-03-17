@@ -4,9 +4,12 @@ protocol PomodoroTheme {
     associatedtype TimerBody: View
     associatedtype ControlsBody: View
     associatedtype CompletedBody: View
+    associatedtype BackgroundBody: View
 
     var id: ThemeIdentifier { get }
     var name: String { get }
+
+    @ViewBuilder func popoverBackground(sessionType: SessionType?) -> BackgroundBody
 
     @ViewBuilder func timerView(
         remainingSeconds: Int,

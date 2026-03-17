@@ -4,6 +4,18 @@ struct GlassmorphicTheme: PomodoroTheme {
     let id = ThemeIdentifier.glassmorphic
     let name = "Glassmorphic"
 
+    func popoverBackground(sessionType: SessionType?) -> some View {
+        let type = sessionType ?? .work
+        ZStack {
+            Rectangle().fill(.ultraThinMaterial)
+            LinearGradient(
+                colors: [accentColor(for: type).opacity(0.15), accentColor(for: type).opacity(0.05)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
+
     private func accentColor(for sessionType: SessionType) -> Color {
         switch sessionType {
         case .work: .blue
@@ -12,18 +24,9 @@ struct GlassmorphicTheme: PomodoroTheme {
         }
     }
 
-    private func gradient(for sessionType: SessionType) -> LinearGradient {
-        let color = accentColor(for: sessionType)
-        return LinearGradient(
-            colors: [color.opacity(0.3), color.opacity(0.1)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
     func timerView(remainingSeconds: Int, totalSeconds: Int, sessionType: SessionType, state: TimerState) -> some View {
         let progress = totalSeconds > 0 ? Double(remainingSeconds) / Double(totalSeconds) : 0
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             Text(sessionType.displayName)
                 .font(.headline)
                 .foregroundStyle(.secondary)
@@ -35,27 +38,18 @@ struct GlassmorphicTheme: PomodoroTheme {
                     trackColor: .white.opacity(0.15),
                     progressColor: accentColor(for: sessionType)
                 )
-                .frame(width: 140, height: 140)
+                .frame(width: 130, height: 130)
                 .shadow(color: accentColor(for: sessionType).opacity(0.3), radius: 8)
 
                 Text(formatTime(remainingSeconds))
-                    .font(.system(size: 42, weight: .light, design: .monospaced))
+                    .font(.system(size: 36, weight: .light, design: .monospaced))
                     .foregroundStyle(.primary)
             }
-        }
-        .padding(12)
-        .background {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(gradient(for: sessionType))
-                )
         }
     }
 
     func controlsView(state: TimerState, onStart: @escaping () -> Void, onPause: @escaping () -> Void, onResume: @escaping () -> Void, onSkip: @escaping () -> Void, onCancel: @escaping () -> Void, onRestart: @escaping () -> Void) -> some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 12) {
             switch state {
             case .idle:
                 glassButton("play.fill", action: onStart)
@@ -90,18 +84,13 @@ struct GlassmorphicTheme: PomodoroTheme {
                     .buttonStyle(.bordered)
             }
         }
-        .padding()
-        .background {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-        }
     }
 
     private func glassButton(_ systemName: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.title2)
-                .frame(width: 44, height: 44)
+                .frame(width: 40, height: 40)
                 .background(.ultraThinMaterial, in: Circle())
         }
         .buttonStyle(.plain)

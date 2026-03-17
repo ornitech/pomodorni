@@ -22,6 +22,9 @@ struct TimerPopoverView: View {
             }
         }
         .frame(width: 300, height: 400)
+        .background {
+            theme.popoverBackground(sessionType: engine.state.sessionType)
+        }
         .task {
             await notificationService.checkPermission()
             showPermissionBanner = !notificationService.isAuthorized

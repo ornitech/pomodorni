@@ -4,6 +4,10 @@ struct BoldTheme: PomodoroTheme {
     let id = ThemeIdentifier.bold
     let name = "Bold"
 
+    func popoverBackground(sessionType: SessionType?) -> some View {
+        EmptyView()
+    }
+
     private func primaryColor(for sessionType: SessionType) -> Color {
         switch sessionType {
         case .work: .red
@@ -27,10 +31,10 @@ struct BoldTheme: PomodoroTheme {
                     trackColor: color.opacity(0.2),
                     progressColor: color
                 )
-                .frame(width: 160, height: 160)
+                .frame(width: 130, height: 130)
 
                 Text(formatTime(remainingSeconds))
-                    .font(.system(size: 42, weight: .bold, design: .monospaced))
+                    .font(.system(size: 36, weight: .bold, design: .monospaced))
                     .foregroundStyle(color)
             }
         }
