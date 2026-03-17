@@ -4,38 +4,59 @@ struct BoldTheme: PomodoroTheme {
     let id = ThemeIdentifier.bold
     let name = "Bold"
 
+    // Owl palette
+    private static let owlRed = Color(red: 0.83, green: 0.17, blue: 0.12)
+    private static let owlOrange = Color(red: 0.94, green: 0.47, blue: 0.19)
+    private static let owlNavy = Color(red: 0.17, green: 0.16, blue: 0.37)
+    private static let owlAmber = Color(red: 0.96, green: 0.63, blue: 0.26)
+
     func popoverBackground(sessionType: SessionType?) -> some View {
-        EmptyView()
+        let (top, bottom) = gradientColors(for: sessionType)
+        LinearGradient(
+            colors: [top, bottom],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private func gradientColors(for sessionType: SessionType?) -> (Color, Color) {
+        switch sessionType {
+        case .work, .none:
+            (Self.owlRed, Self.owlOrange)
+        case .shortBreak:
+            (Self.owlNavy, Self.owlNavy.opacity(0.85))
+        case .longBreak:
+            (Self.owlAmber, Self.owlOrange)
+        }
     }
 
     private func primaryColor(for sessionType: SessionType) -> Color {
         switch sessionType {
-        case .work: .red
-        case .shortBreak: .green
-        case .longBreak: .blue
+        case .work: Self.owlRed
+        case .shortBreak: Self.owlNavy
+        case .longBreak: Self.owlAmber
         }
     }
 
     func timerView(remainingSeconds: Int, totalSeconds: Int, sessionType: SessionType, state: TimerState) -> some View {
         let progress = totalSeconds > 0 ? Double(remainingSeconds) / Double(totalSeconds) : 0
-        let color = primaryColor(for: sessionType)
         VStack(spacing: 16) {
             Text(sessionType.displayName)
                 .font(.headline.bold())
-                .foregroundStyle(color)
+                .foregroundStyle(.white.opacity(0.9))
 
             ZStack {
                 ProgressRing(
                     progress: progress,
                     lineWidth: 12,
-                    trackColor: color.opacity(0.2),
-                    progressColor: color
+                    trackColor: .white.opacity(0.2),
+                    progressColor: .white
                 )
                 .frame(width: 130, height: 130)
 
                 Text(formatTime(remainingSeconds))
                     .font(.system(size: 36, weight: .bold, design: .monospaced))
-                    .foregroundStyle(color)
+                    .foregroundStyle(.white)
             }
         }
     }
@@ -44,17 +65,17 @@ struct BoldTheme: PomodoroTheme {
         HStack(spacing: 16) {
             switch state {
             case .idle:
-                boldButton("play.fill", color: .red, action: onStart)
-            case .running(let type):
-                boldButton("pause.fill", color: primaryColor(for: type), action: onPause)
-                boldButton("forward.fill", color: primaryColor(for: type), action: onSkip)
-                boldButton("arrow.counterclockwise", color: primaryColor(for: type), action: onRestart)
-                boldButton("xmark", color: .gray, action: onCancel)
-            case .paused(let type):
-                boldButton("play.fill", color: primaryColor(for: type), action: onResume)
-                boldButton("forward.fill", color: primaryColor(for: type), action: onSkip)
-                boldButton("arrow.counterclockwise", color: primaryColor(for: type), action: onRestart)
-                boldButton("xmark", color: .gray, action: onCancel)
+                boldButton("play.fill", action: onStart)
+            case .running:
+                boldButton("pause.fill", action: onPause)
+                boldButton("forward.fill", action: onSkip)
+                boldButton("arrow.counterclockwise", action: onRestart)
+                boldButton("xmark", action: onCancel)
+            case .paused:
+                boldButton("play.fill", action: onResume)
+                boldButton("forward.fill", action: onSkip)
+                boldButton("arrow.counterclockwise", action: onRestart)
+                boldButton("xmark", action: onCancel)
             case .completed:
                 EmptyView()
             }
@@ -62,32 +83,32 @@ struct BoldTheme: PomodoroTheme {
     }
 
     func completedView(sessionType: SessionType, nextSessionName: String, onStartNext: @escaping () -> Void, onCancel: @escaping () -> Void) -> some View {
-        let color = primaryColor(for: sessionType)
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 48))
-                .foregroundStyle(color)
+                .foregroundStyle(.white)
                 .scaleEffect(1.1)
             Text("\(sessionType.displayName) complete!")
                 .font(.headline.bold())
-                .foregroundStyle(color)
+                .foregroundStyle(.white)
             HStack(spacing: 16) {
                 Button("Start \(nextSessionName)", action: onStartNext)
                     .buttonStyle(.borderedProminent)
-                    .tint(color)
+                    .tint(.white.opacity(0.25))
                 Button("Done", action: onCancel)
                     .buttonStyle(.bordered)
+                    .tint(.white)
             }
         }
     }
 
-    private func boldButton(_ systemName: String, color: Color, action: @escaping () -> Void) -> some View {
+    private func boldButton(_ systemName: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.title2.bold())
                 .foregroundStyle(.white)
                 .frame(width: 44, height: 44)
-                .background(color, in: Circle())
+                .background(.white.opacity(0.25), in: Circle())
                 .contentShape(Circle())
         }
         .buttonStyle(BounceButtonStyle())

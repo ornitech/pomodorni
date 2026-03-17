@@ -62,8 +62,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Pomodorni")
-            button.image?.isTemplate = true
+            button.image = menuBarIcon()
             button.imagePosition = .imageRight
             button.action = #selector(statusItemClicked)
             button.target = self
@@ -131,11 +130,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.attributedTitle = NSAttributedString(string: "")
         }
 
-        // Swap icon to alert variant when session is completed
-        let iconName = engine.state.isCompleted ? "timer.circle.fill" : "timer"
-        let newImage = NSImage(systemSymbolName: iconName, accessibilityDescription: "Pomodorni")
-        newImage?.isTemplate = true
-        button.image = newImage
+        button.image = menuBarIcon()
     }
 
     /// Calculate the panel origin so it's centered horizontally on the
@@ -187,11 +182,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    private func resetStatusIcon() {
-        guard let button = statusItem?.button else { return }
+    private func menuBarIcon() -> NSImage? {
+        // Try Bundle.main first, then fall back to path relative to executable
+        let candidates: [URL] = [
+            Bundle.main.url(forResource: "MenuBarIcon", withExtension: "png"),
+            Bundle.main.executableURL?
+                .deletingLastPathComponent() // MacOS/
+                .deletingLastPathComponent() // Contents/
+                .appendingPathComponent("Contents/Resources/MenuBarIcon.png")
+        ].compactMap { $0 }
+
+        for url in candidates {
+            if let image = NSImage(contentsOf: url) {
+                image.size = NSSize(width: 24, height: 24)
+                return image
+            }
+        }
+        // Fallback to SF Symbol
         let image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Pomodorni")
         image?.isTemplate = true
-        button.image = image
+        return image
+    }
+
+    private func resetStatusIcon() {
+        guard let button = statusItem?.button else { return }
+        button.image = menuBarIcon()
     }
 
     @objc private func statusItemClicked() {
