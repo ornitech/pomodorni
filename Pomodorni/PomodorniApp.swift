@@ -123,7 +123,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if settings.showTimeInMenuBar && engine.state.isRunning {
             let timeString = formatTime(engine.remainingSeconds) + " "
             let attributes: [NSAttributedString.Key: Any] = [
-                .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+                .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular),
+                .baselineOffset: -1
             ]
             button.attributedTitle = NSAttributedString(string: timeString, attributes: attributes)
         } else {
