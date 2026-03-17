@@ -5,3 +5,8 @@
 xcuserdata/
 DerivedData/
 .swiftpm/
+
+# Distribution artifacts
+*.dmg
+*.icns
+*.app/
