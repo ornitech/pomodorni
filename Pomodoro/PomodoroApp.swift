@@ -67,7 +67,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Timer item: variable width, shows countdown text.
         // Created SECOND so it appears to the LEFT of the icon.
-        timerItem = NSStatusBar.system.statusItem(withLength: 0)
+        timerItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         timerItem.isVisible = false
 
         // Create popover with SwiftUI content
@@ -97,18 +97,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateTimerDisplay() {
-        if settings.showTimeInMenuBar && engine.state.isRunning {
+        let shouldShow = settings.showTimeInMenuBar && engine.state.isRunning
+        if shouldShow {
             let timeString = formatTime(engine.remainingSeconds)
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
             ]
             timerItem.button?.attributedTitle = NSAttributedString(string: timeString, attributes: attributes)
-            timerItem.length = NSStatusItem.variableLength
-            timerItem.isVisible = true
-        } else {
-            timerItem.isVisible = false
-            timerItem.length = 0
         }
+        timerItem.isVisible = shouldShow
     }
 
     @objc private func statusItemClicked() {
