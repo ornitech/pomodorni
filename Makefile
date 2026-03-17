@@ -34,6 +34,12 @@ app: build
 		$(MAKE) iconset; \
 		cp "$(ICNS_FILE)" "$(APP_CONTENTS)/Resources/AppIcon.icns"; \
 	fi
+	# Copy Sparkle framework if available
+	@SPARKLE_PATH=$$(find $(BUILD_DIR) -name "Sparkle.framework" -type d 2>/dev/null | head -1); \
+	if [ -n "$$SPARKLE_PATH" ]; then \
+		cp -R "$$SPARKLE_PATH" "$(APP_CONTENTS)/Frameworks/"; \
+		echo "Sparkle.framework embedded"; \
+	fi
 	codesign --force --sign "$(SIGNING_IDENTITY)" "$(APP_BUNDLE)"
 	@echo "$(APP_NAME).app assembled at $(APP_BUNDLE)"
 

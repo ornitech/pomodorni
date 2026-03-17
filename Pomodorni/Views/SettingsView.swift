@@ -85,6 +85,8 @@ struct SettingsView: View {
                 .font(.callout)
             Toggle("Show time in menu bar", isOn: $settings.showTimeInMenuBar)
                 .font(.callout)
+            Toggle("Check for updates automatically", isOn: $settings.checkForUpdatesAutomatically)
+                .font(.callout)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Completion alert")

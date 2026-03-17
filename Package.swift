@@ -8,11 +8,15 @@ let package = Package(
         .executable(name: "Pomodorni", targets: ["Pomodorni"])
     ],
     dependencies: [
-        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.15.0")
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.15.0"),
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.0.0")
     ],
     targets: [
         .executableTarget(
             name: "Pomodorni",
+            dependencies: [
+                .product(name: "Sparkle", package: "Sparkle")
+            ],
             path: "Pomodorni",
             exclude: ["Info.plist", "Assets"],
             swiftSettings: [.swiftLanguageMode(.v5)]

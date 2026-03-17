@@ -64,6 +64,9 @@ final class Settings {
     var selectedTheme: ThemeIdentifier {
         didSet { defaults.set(selectedTheme.rawValue, forKey: "selectedTheme") }
     }
+    var checkForUpdatesAutomatically: Bool {
+        didSet { defaults.set(checkForUpdatesAutomatically, forKey: "checkForUpdatesAutomatically") }
+    }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -78,6 +81,7 @@ final class Settings {
         self.showTimeInMenuBar = defaults.object(forKey: "showTimeInMenuBar") as? Bool ?? true
         let themeRaw = defaults.string(forKey: "selectedTheme") ?? ThemeIdentifier.minimal.rawValue
         self.selectedTheme = ThemeIdentifier(rawValue: themeRaw) ?? .minimal
+        self.checkForUpdatesAutomatically = defaults.object(forKey: "checkForUpdatesAutomatically") as? Bool ?? true
     }
 
     func durationSeconds(for sessionType: SessionType) -> Int {
