@@ -51,12 +51,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Create status bar item with a strong reference
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        // Fixed width prevents the popover from jumping when timer text
+        // appears/disappears. Wide enough for "00:00 " + icon.
+        statusItem = NSStatusBar.system.statusItem(withLength: 70)
 
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Pomodoro")
             button.image?.isTemplate = true
+            button.imagePosition = .imageRight
             button.action = #selector(statusItemClicked)
             button.target = self
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -91,15 +93,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func updateStatusItemTitle() {
         guard let button = statusItem?.button else { return }
         if settings.showTimeInMenuBar && engine.state.isRunning {
-            let timeString = formatTime(engine.remainingSeconds) + " "
+            let timeString = formatTime(engine.remainingSeconds)
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
             ]
             button.attributedTitle = NSAttributedString(string: timeString, attributes: attributes)
-            button.imagePosition = .imageRight
         } else {
             button.attributedTitle = NSAttributedString(string: "")
-            button.imagePosition = .imageOnly
         }
     }
 
@@ -119,26 +119,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if popover.isShown {
             popover.performClose(nil)
         } else {
-            // Show the popover then manually reposition its window so
-            // the arrow always points at the icon. The icon is pinned
-            // to the right edge of the status item (imagePosition = .imageRight).
-            // Status items grow leftward in the menu bar, so the right
-            // edge (and the icon) stay at a fixed screen-x.
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-
-            if let popoverWindow = popover.contentViewController?.view.window,
-               let buttonWindow = button.window {
-                // Screen position of the icon center
-                let iconScreenX = buttonWindow.frame.maxX - (button.image?.size.width ?? 18) / 2
-                // Move popover so its center aligns with the icon
-                let popoverCenterX = popoverWindow.frame.midX
-                let offset = iconScreenX - popoverCenterX
-                popoverWindow.setFrameOrigin(NSPoint(
-                    x: popoverWindow.frame.origin.x + offset,
-                    y: popoverWindow.frame.origin.y
-                ))
-            }
-
             popover.contentViewController?.view.window?.makeKey()
         }
     }
