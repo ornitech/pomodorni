@@ -119,10 +119,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if popover.isShown {
             popover.performClose(nil)
         } else {
-            // Anchor to the right edge of the button so the popover
-            // stays stable regardless of timer text width changes
+            // Anchor on the icon itself. The icon is always at the right
+            // edge of the button (imagePosition = .imageRight).
+            let imageWidth = button.image?.size.width ?? 18
+            let iconCenterX = button.bounds.maxX - imageWidth / 2
             let anchorRect = NSRect(
-                x: button.bounds.maxX - 1,
+                x: iconCenterX,
                 y: button.bounds.minY,
                 width: 1,
                 height: button.bounds.height
