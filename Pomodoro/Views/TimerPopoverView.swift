@@ -65,6 +65,7 @@ struct TimerPopoverView: View {
             case .completed(let type):
                 theme.completedView(
                     sessionType: type,
+                    nextSessionName: engine.nextSessionName,
                     onStartNext: engine.startNext,
                     onCancel: engine.cancel
                 )

@@ -61,7 +61,7 @@ struct BoldTheme: PomodoroTheme {
         }
     }
 
-    func completedView(sessionType: SessionType, onStartNext: @escaping () -> Void, onCancel: @escaping () -> Void) -> some View {
+    func completedView(sessionType: SessionType, nextSessionName: String, onStartNext: @escaping () -> Void, onCancel: @escaping () -> Void) -> some View {
         let color = primaryColor(for: sessionType)
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
@@ -72,7 +72,7 @@ struct BoldTheme: PomodoroTheme {
                 .font(.headline.bold())
                 .foregroundStyle(color)
             HStack(spacing: 16) {
-                Button("Start Next", action: onStartNext)
+                Button("Start \(nextSessionName)", action: onStartNext)
                     .buttonStyle(.borderedProminent)
                     .tint(color)
                 Button("Done", action: onCancel)

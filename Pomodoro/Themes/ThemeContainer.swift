@@ -3,7 +3,7 @@ import SwiftUI
 struct ThemeContainer {
     private let _timerView: (Int, Int, SessionType, TimerState) -> AnyView
     private let _controlsView: (TimerState, @escaping () -> Void, @escaping () -> Void, @escaping () -> Void, @escaping () -> Void, @escaping () -> Void, @escaping () -> Void) -> AnyView
-    private let _completedView: (SessionType, @escaping () -> Void, @escaping () -> Void) -> AnyView
+    private let _completedView: (SessionType, String, @escaping () -> Void, @escaping () -> Void) -> AnyView
     private let _popoverBackground: (SessionType?) -> AnyView
 
     let id: ThemeIdentifier
@@ -14,7 +14,7 @@ struct ThemeContainer {
         self.name = theme.name
         self._timerView = { AnyView(theme.timerView(remainingSeconds: $0, totalSeconds: $1, sessionType: $2, state: $3)) }
         self._controlsView = { AnyView(theme.controlsView(state: $0, onStart: $1, onPause: $2, onResume: $3, onSkip: $4, onCancel: $5, onRestart: $6)) }
-        self._completedView = { AnyView(theme.completedView(sessionType: $0, onStartNext: $1, onCancel: $2)) }
+        self._completedView = { AnyView(theme.completedView(sessionType: $0, nextSessionName: $1, onStartNext: $2, onCancel: $3)) }
         self._popoverBackground = { AnyView(theme.popoverBackground(sessionType: $0)) }
     }
 
@@ -26,8 +26,8 @@ struct ThemeContainer {
         _controlsView(state, onStart, onPause, onResume, onSkip, onCancel, onRestart)
     }
 
-    func completedView(sessionType: SessionType, onStartNext: @escaping () -> Void, onCancel: @escaping () -> Void) -> some View {
-        _completedView(sessionType, onStartNext, onCancel)
+    func completedView(sessionType: SessionType, nextSessionName: String, onStartNext: @escaping () -> Void, onCancel: @escaping () -> Void) -> some View {
+        _completedView(sessionType, nextSessionName, onStartNext, onCancel)
     }
 
     func popoverBackground(sessionType: SessionType?) -> some View {

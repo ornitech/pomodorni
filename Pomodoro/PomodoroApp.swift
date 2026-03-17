@@ -91,13 +91,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func updateStatusItemTitle() {
         guard let button = statusItem?.button else { return }
         if settings.showTimeInMenuBar && engine.state.isRunning {
-            let timeString = " " + formatTime(engine.remainingSeconds)
+            let timeString = formatTime(engine.remainingSeconds) + " "
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
             ]
             button.attributedTitle = NSAttributedString(string: timeString, attributes: attributes)
+            button.imagePosition = .imageRight
         } else {
             button.attributedTitle = NSAttributedString(string: "")
+            button.imagePosition = .imageOnly
         }
     }
 

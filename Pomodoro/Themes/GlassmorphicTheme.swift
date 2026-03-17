@@ -69,7 +69,7 @@ struct GlassmorphicTheme: PomodoroTheme {
         }
     }
 
-    func completedView(sessionType: SessionType, onStartNext: @escaping () -> Void, onCancel: @escaping () -> Void) -> some View {
+    func completedView(sessionType: SessionType, nextSessionName: String, onStartNext: @escaping () -> Void, onCancel: @escaping () -> Void) -> some View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 48))
@@ -77,7 +77,7 @@ struct GlassmorphicTheme: PomodoroTheme {
             Text("\(sessionType.displayName) complete!")
                 .font(.headline)
             HStack(spacing: 16) {
-                Button("Start Next", action: onStartNext)
+                Button("Start \(nextSessionName)", action: onStartNext)
                     .buttonStyle(.borderedProminent)
                     .tint(accentColor(for: sessionType))
                 Button("Done", action: onCancel)

@@ -30,6 +30,7 @@ protocol PomodoroTheme {
 
     @ViewBuilder func completedView(
         sessionType: SessionType,
+        nextSessionName: String,
         onStartNext: @escaping () -> Void,
         onCancel: @escaping () -> Void
     ) -> CompletedBody

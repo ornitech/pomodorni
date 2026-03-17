@@ -9,6 +9,11 @@ final class TimerEngine {
 
     var onSessionComplete: ((SessionType) -> Void)?
 
+    var nextSessionName: String {
+        guard let type = state.sessionType else { return "Work" }
+        return type.nextSessionType(intervalCounter: intervalCounter, longBreakInterval: settings.longBreakInterval).displayName
+    }
+
     private var intervalCounter: Int = 0
     private let settings: Settings
     private let timeProvider: TimeProvider
