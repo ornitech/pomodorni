@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import Pomodoro
+@testable import Pomodorni
 
 @Suite("Pomodoro Flow Integration")
 struct PomodoroFlowTests {

@@ -1,5 +1,5 @@
 import Foundation
-@testable import Pomodoro
+@testable import Pomodorni
 
 final class MockNotificationProvider: NotificationProvider {
     var authorizationGranted = true

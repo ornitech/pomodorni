@@ -3,16 +3,22 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.pomodoro.app</string>
+    <string>com.ornitech.pomodorni</string>
     <key>CFBundleExecutable</key>
-    <string>Pomodoro</string>
+    <string>Pomodorni</string>
     <key>CFBundleName</key>
-    <string>Pomodoro</string>
+    <string>Pomodorni</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1.0.0</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>LSUIElement</key>
     <true/>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright 2026 Ornitech</string>
 </dict>
 </plist>

@@ -1,5 +1,5 @@
 import Testing
-@testable import Pomodoro
+@testable import Pomodorni
 
 @Suite("TimerState")
 struct TimerStateTests {

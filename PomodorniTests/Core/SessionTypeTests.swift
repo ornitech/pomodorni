@@ -1,5 +1,5 @@
 import Testing
-@testable import Pomodoro
+@testable import Pomodorni
 
 @Suite("SessionType")
 struct SessionTypeTests {
