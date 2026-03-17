@@ -2,7 +2,10 @@ import SwiftUI
 import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    private var statusItem: NSStatusItem!
+    // Two status items: timerItem (variable, text only) sits to the LEFT
+    // of iconItem (fixed, icon only). Popover always anchors to iconItem.
+    private var iconItem: NSStatusItem!
+    private var timerItem: NSStatusItem!
     private var popover: NSPopover!
     private let engine: TimerEngine
     private let settings: Settings
@@ -51,18 +54,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Fixed width prevents the popover from jumping when timer text
-        // appears/disappears. Wide enough for "00:00 " + icon.
-        statusItem = NSStatusBar.system.statusItem(withLength: 70)
-
-        if let button = statusItem.button {
+        // Icon item: fixed square width, never changes position.
+        // Created FIRST so it appears to the RIGHT in the menu bar.
+        iconItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        if let button = iconItem.button {
             button.image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Pomodoro")
             button.image?.isTemplate = true
-            button.imagePosition = .imageRight
             button.action = #selector(statusItemClicked)
             button.target = self
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
+
+        // Timer item: variable width, shows countdown text.
+        // Created SECOND so it appears to the LEFT of the icon.
+        timerItem = NSStatusBar.system.statusItem(withLength: 0)
+        timerItem.isVisible = false
 
         // Create popover with SwiftUI content
         popover = NSPopover()
@@ -84,27 +90,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             await notificationService.requestPermission()
         }
 
-        // Update menu bar title periodically
+        // Update timer text periodically
         Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            self?.updateStatusItemTitle()
+            self?.updateTimerDisplay()
         }
     }
 
-    private func updateStatusItemTitle() {
-        guard let button = statusItem?.button else { return }
+    private func updateTimerDisplay() {
         if settings.showTimeInMenuBar && engine.state.isRunning {
             let timeString = formatTime(engine.remainingSeconds)
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
             ]
-            button.attributedTitle = NSAttributedString(string: timeString, attributes: attributes)
+            timerItem.button?.attributedTitle = NSAttributedString(string: timeString, attributes: attributes)
+            timerItem.length = NSStatusItem.variableLength
+            timerItem.isVisible = true
         } else {
-            button.attributedTitle = NSAttributedString(string: "")
+            timerItem.isVisible = false
+            timerItem.length = 0
         }
     }
 
     @objc private func statusItemClicked() {
-        guard statusItem.button != nil,
+        guard iconItem.button != nil,
               let event = NSApp.currentEvent else { return }
 
         if event.type == .rightMouseUp {
@@ -115,7 +123,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func togglePopover() {
-        guard let button = statusItem.button else { return }
+        guard let button = iconItem.button else { return }
         if popover.isShown {
             popover.performClose(nil)
         } else {
@@ -130,15 +138,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Pomodoro", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
-        statusItem.menu = menu
-        statusItem.button?.performClick(nil)
-        // Remove menu after it closes so left-click still opens the popover
-        statusItem.menu = nil
+        iconItem.menu = menu
+        iconItem.button?.performClick(nil)
+        iconItem.menu = nil
     }
 
     @objc private func openSettings() {
-        // Open the popover and show settings
-        guard let button = statusItem.button else { return }
+        guard let button = iconItem.button else { return }
         if !popover.isShown {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
