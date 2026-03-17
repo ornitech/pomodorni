@@ -77,6 +77,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             )
         )
 
+        // Request notification permission on first launch
+        Task {
+            await notificationService.requestPermission()
+        }
+
         // Update menu bar title periodically
         Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             self?.updateStatusItemTitle()
