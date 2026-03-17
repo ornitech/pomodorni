@@ -3,13 +3,14 @@ import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
-    private var popover: NSPopover!
+    private var panel: NSPanel!
     private let engine: TimerEngine
     private let settings: Settings
     private let notificationService: NotificationService
     private let soundService: SoundService
     private let shortcutService: GlobalShortcutService
     var showSettingsCallback: (() -> Void)?
+    private var eventMonitor: Any?
 
     override init() {
         let settings = Settings()
@@ -56,18 +57,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Pomodoro")
             button.image?.isTemplate = true
-            // Always imageRight so the icon stays at the fixed right edge
-            // of the status item. Timer text grows to the left.
             button.imagePosition = .imageRight
             button.action = #selector(statusItemClicked)
             button.target = self
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
-        popover = NSPopover()
-        popover.contentSize = NSSize(width: 300, height: 400)
-        popover.behavior = .transient
-        popover.contentViewController = NSHostingController(
+        // Custom panel instead of NSPopover — gives full control over positioning
+        let contentSize = NSSize(width: 300, height: 400)
+        panel = NSPanel(
+            contentRect: NSRect(origin: .zero, size: contentSize),
+            styleMask: [.nonactivatingPanel, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        panel.isFloatingPanel = true
+        panel.level = .popUpMenu
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.titleVisibility = .hidden
+        panel.titlebarAppearsTransparent = true
+        panel.isMovableByWindowBackground = false
+        panel.isReleasedWhenClosed = false
+
+        let hostingView = NSHostingView(
             rootView: TimerPopoverView(
                 engine: engine,
                 settings: settings,
@@ -76,7 +90,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     self?.showSettingsCallback = callback
                 }
             )
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         )
+        panel.contentView = hostingView
 
         Task {
             await notificationService.requestPermission()
@@ -98,21 +114,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             button.attributedTitle = NSAttributedString(string: "")
         }
-        // Always keep imageRight — never switch to imageOnly
     }
 
-    /// The rect within the button where the icon sits.
-    /// With imageRight, the icon is pinned to the right edge.
-    /// The right edge of a status item is fixed on screen (items grow left),
-    /// so this rect maps to the same screen position regardless of button width.
-    private func iconRect(in button: NSStatusBarButton) -> NSRect {
+    /// Calculate the panel origin so it's centered horizontally on the
+    /// status item icon and positioned just below the menu bar.
+    /// Uses screen coordinates from the button's window frame.
+    private func panelOrigin() -> NSPoint {
+        guard let button = statusItem.button,
+              let buttonWindow = button.window,
+              let screen = buttonWindow.screen ?? NSScreen.main else {
+            return .zero
+        }
+
+        let statusRect = buttonWindow.frame
         let imageWidth = button.image?.size.width ?? 16
-        return NSRect(
-            x: button.bounds.maxX - imageWidth,
-            y: button.bounds.minY,
-            width: imageWidth,
-            height: button.bounds.height
-        )
+
+        // Icon is at the right edge of the status item (imageRight).
+        // The right edge of the status item window is fixed on screen.
+        let iconCenterX = statusRect.maxX - imageWidth / 2
+
+        // Center panel horizontally on the icon
+        let panelWidth = panel.frame.width
+        var x = iconCenterX - panelWidth / 2
+
+        // Keep panel on screen
+        let screenRight = screen.visibleFrame.maxX
+        let screenLeft = screen.visibleFrame.minX
+        x = min(x, screenRight - panelWidth - 4)
+        x = max(x, screenLeft + 4)
+
+        // Position just below the menu bar
+        let y = statusRect.minY - panel.frame.height - 4
+
+        return NSPoint(x: x, y: y)
     }
 
     @objc private func statusItemClicked() {
@@ -122,17 +156,34 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if event.type == .rightMouseUp {
             showContextMenu()
         } else {
-            togglePopover()
+            togglePanel()
         }
     }
 
-    private func togglePopover() {
-        guard let button = statusItem.button else { return }
-        if popover.isShown {
-            popover.performClose(nil)
+    private func togglePanel() {
+        if panel.isVisible {
+            closePanel()
         } else {
-            popover.show(relativeTo: iconRect(in: button), of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
+            openPanel()
+        }
+    }
+
+    private func openPanel() {
+        panel.setFrameOrigin(panelOrigin())
+        panel.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        // Close when clicking outside
+        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            self?.closePanel()
+        }
+    }
+
+    private func closePanel() {
+        panel.orderOut(nil)
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+            eventMonitor = nil
         }
     }
 
@@ -148,10 +199,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openSettings() {
-        guard let button = statusItem.button else { return }
-        if !popover.isShown {
-            popover.show(relativeTo: iconRect(in: button), of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
+        if !panel.isVisible {
+            openPanel()
         }
         showSettingsCallback?()
     }
