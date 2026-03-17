@@ -1,14 +1,29 @@
 import Foundation
 
+enum AlertStyle: String, CaseIterable {
+    case pill
+    case centered
+    case corner
+    case none
+}
+
 @Observable
 final class Settings {
     private let defaults: UserDefaults
 
+    private var _alertStyle: AlertStyle
     private var _workDuration: Int
     private var _shortBreakDuration: Int
     private var _longBreakDuration: Int
     private var _longBreakInterval: Int
 
+    var alertStyle: AlertStyle {
+        get { _alertStyle }
+        set {
+            _alertStyle = newValue
+            defaults.set(newValue.rawValue, forKey: "alertStyle")
+        }
+    }
     var workDuration: Int {
         get { _workDuration }
         set {
@@ -52,6 +67,8 @@ final class Settings {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        let alertRaw = defaults.string(forKey: "alertStyle") ?? AlertStyle.centered.rawValue
+        self._alertStyle = AlertStyle(rawValue: alertRaw) ?? .centered
         self._workDuration = defaults.object(forKey: "workDuration") as? Int ?? 25
         self._shortBreakDuration = defaults.object(forKey: "shortBreakDuration") as? Int ?? 5
         self._longBreakDuration = defaults.object(forKey: "longBreakDuration") as? Int ?? 15

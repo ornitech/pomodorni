@@ -9,6 +9,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let notificationService: NotificationService
     private let soundService: SoundService
     private let shortcutService: GlobalShortcutService
+    private let alertPanel = AlertPanel()
     var showSettingsCallback: (() -> Void)?
     private var eventMonitor: Any?
 
@@ -28,15 +29,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         super.init()
 
         engine.onSessionComplete = { [weak self] sessionType in
-            self?.notificationService.notifySessionComplete(sessionType)
-            self?.soundService.playSessionComplete(sessionType)
+            guard let self else { return }
+            self.notificationService.notifySessionComplete(sessionType)
+            self.soundService.playSessionComplete(sessionType)
+            self.showAlert(for: sessionType)
         }
 
         shortcutService.register(shortcuts: [
             .startPause: .ctrlOptionP,
             .skip: .ctrlOptionS,
             .reset: .ctrlOptionR
-        ]) { [weak engine] action in
+        ]) { [weak self, weak engine] action in
             guard let engine else { return }
             switch action {
             case .startPause:
@@ -47,6 +50,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 engine.skip()
             case .reset:
                 engine.cancel()
+                self?.alertPanel.dismiss()
+                self?.resetStatusIcon()
             }
         }
     }
@@ -114,6 +119,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             button.attributedTitle = NSAttributedString(string: "")
         }
+
+        // Swap icon to alert variant when session is completed
+        let iconName = engine.state.isCompleted ? "timer.circle.fill" : "timer"
+        let newImage = NSImage(systemSymbolName: iconName, accessibilityDescription: "Pomodoro")
+        newImage?.isTemplate = true
+        button.image = newImage
     }
 
     /// Calculate the panel origin so it's centered horizontally on the
@@ -149,6 +160,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return NSPoint(x: x, y: y)
     }
 
+    private func showAlert(for sessionType: SessionType) {
+        let autoStarted = settings.autoStartEnabled
+        alertPanel.show(
+            for: sessionType,
+            nextSessionName: engine.nextSessionName,
+            style: settings.alertStyle,
+            autoStarted: autoStarted,
+            statusItemWindow: statusItem.button?.window,
+            onStartNext: { [weak self] in
+                self?.engine.startNext()
+                self?.resetStatusIcon()
+            },
+            onDismiss: { }
+        )
+    }
+
+    private func resetStatusIcon() {
+        guard let button = statusItem?.button else { return }
+        let image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Pomodoro")
+        image?.isTemplate = true
+        button.image = image
+    }
+
     @objc private func statusItemClicked() {
         guard statusItem.button != nil,
               let event = NSApp.currentEvent else { return }
@@ -169,6 +203,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func openPanel() {
+        alertPanel.dismiss()
+        resetStatusIcon()
+
         panel.setFrameOrigin(panelOrigin())
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)

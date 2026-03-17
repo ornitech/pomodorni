@@ -85,6 +85,18 @@ struct SettingsView: View {
                 .font(.callout)
             Toggle("Show time in menu bar", isOn: $settings.showTimeInMenuBar)
                 .font(.callout)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Completion alert")
+                    .font(.callout)
+                Picker("Alert Style", selection: $settings.alertStyle) {
+                    ForEach(AlertStyle.allCases, id: \.self) { style in
+                        Text(style.rawValue.capitalized).tag(style)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
         }
     }
 
