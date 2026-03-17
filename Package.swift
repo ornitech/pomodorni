@@ -2,34 +2,34 @@
 import PackageDescription
 
 let package = Package(
-    name: "Pomodoro",
+    name: "Pomodorni",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "Pomodoro", targets: ["Pomodoro"])
+        .executable(name: "Pomodorni", targets: ["Pomodorni"])
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.15.0")
     ],
     targets: [
         .executableTarget(
-            name: "Pomodoro",
-            path: "Pomodoro",
-            exclude: ["Info.plist"],
+            name: "Pomodorni",
+            path: "Pomodorni",
+            exclude: ["Info.plist", "Assets"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(
-            name: "PomodoroTests",
-            dependencies: ["Pomodoro"],
-            path: "PomodoroTests",
+            name: "PomodorniTests",
+            dependencies: ["Pomodorni"],
+            path: "PomodorniTests",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(
-            name: "PomodoroSnapshotTests",
+            name: "PomodorniSnapshotTests",
             dependencies: [
-                "Pomodoro",
+                "Pomodorni",
                 .product(name: "SnapshotTesting", package: "swift-snapshot-testing")
             ],
-            path: "PomodoroSnapshotTests",
+            path: "PomodorniSnapshotTests",
             swiftSettings: [.swiftLanguageMode(.v5)]
         )
     ]

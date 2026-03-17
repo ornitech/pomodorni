@@ -1,4 +1,4 @@
-@testable import Pomodoro
+@testable import Pomodorni
 
 final class MockSoundProvider: SoundProvider {
     var playedSounds: [String] = []

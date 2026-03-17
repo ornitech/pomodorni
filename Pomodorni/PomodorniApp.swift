@@ -60,7 +60,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Pomodoro")
+            button.image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Pomodorni")
             button.image?.isTemplate = true
             button.imagePosition = .imageRight
             button.action = #selector(statusItemClicked)
@@ -122,7 +122,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Swap icon to alert variant when session is completed
         let iconName = engine.state.isCompleted ? "timer.circle.fill" : "timer"
-        let newImage = NSImage(systemSymbolName: iconName, accessibilityDescription: "Pomodoro")
+        let newImage = NSImage(systemSymbolName: iconName, accessibilityDescription: "Pomodorni")
         newImage?.isTemplate = true
         button.image = newImage
     }
@@ -178,7 +178,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func resetStatusIcon() {
         guard let button = statusItem?.button else { return }
-        let image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Pomodoro")
+        let image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Pomodorni")
         image?.isTemplate = true
         button.image = image
     }
@@ -228,7 +228,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit Pomodoro", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit Pomodorni", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
         statusItem.menu = menu
         statusItem.button?.performClick(nil)
