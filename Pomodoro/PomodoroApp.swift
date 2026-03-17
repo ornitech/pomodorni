@@ -2,10 +2,7 @@ import SwiftUI
 import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    // Two status items: timerItem (variable, text only) sits to the LEFT
-    // of iconItem (fixed, icon only). Popover always anchors to iconItem.
-    private var iconItem: NSStatusItem!
-    private var timerItem: NSStatusItem!
+    private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private let engine: TimerEngine
     private let settings: Settings
@@ -54,25 +51,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Icon item: tight fixed width, never changes position.
-        // Created FIRST so it appears to the RIGHT in the menu bar.
-        iconItem = NSStatusBar.system.statusItem(withLength: 22)
-        if let button = iconItem.button {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+
+        if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Pomodoro")
             button.image?.isTemplate = true
+            // Always imageRight so the icon stays at the fixed right edge
+            // of the status item. Timer text grows to the left.
+            button.imagePosition = .imageRight
             button.action = #selector(statusItemClicked)
             button.target = self
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
-        // Timer item: fixed width for countdown text.
-        // Created SECOND so it appears to the LEFT of the icon.
-        // Fixed width prevents per-digit size changes. "00:00" in
-        // monospacedDigit font is ~42pt.
-        timerItem = NSStatusBar.system.statusItem(withLength: 44)
-        timerItem.isVisible = false
-
-        // Create popover with SwiftUI content
         popover = NSPopover()
         popover.contentSize = NSSize(width: 300, height: 400)
         popover.behavior = .transient
@@ -87,31 +78,45 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             )
         )
 
-        // Request notification permission on first launch
         Task {
             await notificationService.requestPermission()
         }
 
-        // Update timer text periodically
         Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             self?.updateTimerDisplay()
         }
     }
 
     private func updateTimerDisplay() {
-        let shouldShow = settings.showTimeInMenuBar && engine.state.isRunning
-        if shouldShow {
-            let timeString = formatTime(engine.remainingSeconds)
+        guard let button = statusItem?.button else { return }
+        if settings.showTimeInMenuBar && engine.state.isRunning {
+            let timeString = formatTime(engine.remainingSeconds) + " "
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
             ]
-            timerItem.button?.attributedTitle = NSAttributedString(string: timeString, attributes: attributes)
+            button.attributedTitle = NSAttributedString(string: timeString, attributes: attributes)
+        } else {
+            button.attributedTitle = NSAttributedString(string: "")
         }
-        timerItem.isVisible = shouldShow
+        // Always keep imageRight — never switch to imageOnly
+    }
+
+    /// The rect within the button where the icon sits.
+    /// With imageRight, the icon is pinned to the right edge.
+    /// The right edge of a status item is fixed on screen (items grow left),
+    /// so this rect maps to the same screen position regardless of button width.
+    private func iconRect(in button: NSStatusBarButton) -> NSRect {
+        let imageWidth = button.image?.size.width ?? 16
+        return NSRect(
+            x: button.bounds.maxX - imageWidth,
+            y: button.bounds.minY,
+            width: imageWidth,
+            height: button.bounds.height
+        )
     }
 
     @objc private func statusItemClicked() {
-        guard iconItem.button != nil,
+        guard statusItem.button != nil,
               let event = NSApp.currentEvent else { return }
 
         if event.type == .rightMouseUp {
@@ -122,11 +127,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func togglePopover() {
-        guard let button = iconItem.button else { return }
+        guard let button = statusItem.button else { return }
         if popover.isShown {
             popover.performClose(nil)
         } else {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            popover.show(relativeTo: iconRect(in: button), of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
     }
@@ -137,15 +142,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Pomodoro", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
-        iconItem.menu = menu
-        iconItem.button?.performClick(nil)
-        iconItem.menu = nil
+        statusItem.menu = menu
+        statusItem.button?.performClick(nil)
+        statusItem.menu = nil
     }
 
     @objc private func openSettings() {
-        guard let button = iconItem.button else { return }
+        guard let button = statusItem.button else { return }
         if !popover.isShown {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            popover.show(relativeTo: iconRect(in: button), of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
         showSettingsCallback?()
