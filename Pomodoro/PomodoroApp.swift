@@ -9,6 +9,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let notificationService: NotificationService
     private let soundService: SoundService
     private let shortcutService: GlobalShortcutService
+    var showSettingsCallback: (() -> Void)?
 
     override init() {
         let settings = Settings()
@@ -56,8 +57,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Pomodoro")
             button.image?.isTemplate = true
-            button.action = #selector(togglePopover)
+            button.action = #selector(statusItemClicked)
             button.target = self
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
         // Create popover with SwiftUI content
@@ -68,7 +70,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             rootView: TimerPopoverView(
                 engine: engine,
                 settings: settings,
-                notificationService: notificationService
+                notificationService: notificationService,
+                onShowSettingsRegistration: { [weak self] callback in
+                    self?.showSettingsCallback = callback
+                }
             )
         )
 
@@ -87,7 +92,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    @objc private func togglePopover() {
+    @objc private func statusItemClicked() {
+        guard statusItem.button != nil,
+              let event = NSApp.currentEvent else { return }
+
+        if event.type == .rightMouseUp {
+            showContextMenu()
+        } else {
+            togglePopover()
+        }
+    }
+
+    private func togglePopover() {
         guard let button = statusItem.button else { return }
         if popover.isShown {
             popover.performClose(nil)
@@ -95,5 +111,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
+    }
+
+    private func showContextMenu() {
+        let menu = NSMenu()
+        menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Quit Pomodoro", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+
+        statusItem.menu = menu
+        statusItem.button?.performClick(nil)
+        // Remove menu after it closes so left-click still opens the popover
+        statusItem.menu = nil
+    }
+
+    @objc private func openSettings() {
+        // Open the popover and show settings
+        guard let button = statusItem.button else { return }
+        if !popover.isShown {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            popover.contentViewController?.view.window?.makeKey()
+        }
+        showSettingsCallback?()
     }
 }

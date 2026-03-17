@@ -35,20 +35,20 @@ struct GlassmorphicTheme: PomodoroTheme {
                     trackColor: .white.opacity(0.15),
                     progressColor: accentColor(for: sessionType)
                 )
-                .frame(width: 160, height: 160)
-                .shadow(color: accentColor(for: sessionType).opacity(0.3), radius: 10)
+                .frame(width: 140, height: 140)
+                .shadow(color: accentColor(for: sessionType).opacity(0.3), radius: 8)
 
                 Text(formatTime(remainingSeconds))
                     .font(.system(size: 42, weight: .light, design: .monospaced))
                     .foregroundStyle(.primary)
             }
         }
-        .padding()
+        .padding(12)
         .background {
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: 16)
                 .fill(.ultraThinMaterial)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 20)
+                    RoundedRectangle(cornerRadius: 16)
                         .fill(gradient(for: sessionType))
                 )
         }

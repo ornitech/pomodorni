@@ -4,6 +4,7 @@ struct TimerPopoverView: View {
     @Bindable var engine: TimerEngine
     @Bindable var settings: Settings
     let notificationService: NotificationService
+    let onShowSettingsRegistration: (@escaping () -> Void) -> Void
     @State private var showSettings = false
     @State private var showPermissionBanner = false
     @State private var permissionBannerDismissed = false
@@ -24,6 +25,9 @@ struct TimerPopoverView: View {
         .task {
             await notificationService.checkPermission()
             showPermissionBanner = !notificationService.isAuthorized
+        }
+        .onAppear {
+            onShowSettingsRegistration { showSettings = true }
         }
     }
 
