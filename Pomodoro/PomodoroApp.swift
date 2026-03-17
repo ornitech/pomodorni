@@ -119,7 +119,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if popover.isShown {
             popover.performClose(nil)
         } else {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            // Anchor to the right edge of the button so the popover
+            // stays stable regardless of timer text width changes
+            let anchorRect = NSRect(
+                x: button.bounds.maxX - 1,
+                y: button.bounds.minY,
+                width: 1,
+                height: button.bounds.height
+            )
+            popover.show(relativeTo: anchorRect, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
     }
