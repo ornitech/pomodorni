@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Sparkle
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
@@ -12,6 +13,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let alertPanel = AlertPanel()
     var showSettingsCallback: (() -> Void)?
     private var eventMonitor: Any?
+    private var updaterController: SPUStandardUpdaterController!
 
     override init() {
         let settings = Settings()
@@ -68,6 +70,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
+        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+        updaterController.updater.automaticallyChecksForUpdates = settings.checkForUpdatesAutomatically
+
         // Custom panel instead of NSPopover — gives full control over positioning
         let contentSize = NSSize(width: 300, height: 400)
         panel = NSPanel(
@@ -105,6 +110,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             self?.updateTimerDisplay()
+        }
+
+        // Sync Sparkle auto-update setting
+        Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            self.updaterController.updater.automaticallyChecksForUpdates = self.settings.checkForUpdatesAutomatically
         }
     }
 
@@ -226,6 +237,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showContextMenu() {
         let menu = NSMenu()
+        let checkForUpdatesItem = NSMenuItem(title: "Check for Updates...", action: #selector(checkForUpdates), keyEquivalent: "")
+        checkForUpdatesItem.target = self
+        menu.addItem(checkForUpdatesItem)
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Pomodorni", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
@@ -233,6 +247,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.menu = menu
         statusItem.button?.performClick(nil)
         statusItem.menu = nil
+    }
+
+    @objc private func checkForUpdates() {
+        updaterController.checkForUpdates(nil)
     }
 
     @objc private func openSettings() {

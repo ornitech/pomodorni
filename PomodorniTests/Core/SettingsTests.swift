@@ -64,6 +64,21 @@ struct SettingsTests {
         #expect(settings.longBreakDuration == 60)
     }
 
+    @Test func checkForUpdatesAutomaticallyDefaultsToTrue() {
+        let defaults = UserDefaults(suiteName: "test-updates-\(UUID().uuidString)")!
+        let settings = Settings(defaults: defaults)
+        #expect(settings.checkForUpdatesAutomatically == true)
+    }
+
+    @Test func checkForUpdatesAutomaticallyPersists() {
+        let suite = "test-updates-persist-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let settings = Settings(defaults: defaults)
+        settings.checkForUpdatesAutomatically = false
+        let settings2 = Settings(defaults: defaults)
+        #expect(settings2.checkForUpdatesAutomatically == false)
+    }
+
     @Test("duration in seconds helper")
     func durationSeconds() {
         let defaults = UserDefaults(suiteName: "test-\(UUID().uuidString)")!

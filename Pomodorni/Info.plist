@@ -20,5 +20,9 @@
     <true/>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright 2026 Ornitech</string>
+    <key>SUFeedURL</key>
+    <string>https://ornitech.github.io/pomodorni/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>PLACEHOLDER_PUBLIC_KEY</string>
 </dict>
 </plist>
