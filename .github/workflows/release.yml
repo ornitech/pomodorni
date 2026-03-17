@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 20
     if: "!contains(github.event.head_commit.message, '[skip-release]')"
     steps:
@@ -85,11 +85,14 @@ jobs:
           echo "tool_path=/tmp/sparkle/bin/sign_update" >> "$GITHUB_OUTPUT"
 
       - name: Sign DMG with Sparkle
-        if: ${{ secrets.SPARKLE_PRIVATE_KEY != '' }}
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         id: sign
         run: |
+          if [ -z "$SPARKLE_PRIVATE_KEY" ]; then
+            echo "No Sparkle private key set, skipping signing"
+            exit 0
+          fi
           RAW_OUTPUT=$("${{ steps.sparkle-tools.outputs.tool_path }}" ".build/Pomodorni.dmg" -f <(echo "$SPARKLE_PRIVATE_KEY"))
           ED_SIGNATURE=$(echo "$RAW_OUTPUT" | grep -o 'sparkle:edSignature="[^"]*"' | sed 's/sparkle:edSignature="//;s/"//')
           echo "signature=$ED_SIGNATURE" >> "$GITHUB_OUTPUT"
@@ -180,10 +183,13 @@ jobs:
           generate_release_notes: true
 
       - name: Notify Homebrew tap
-        if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
         env:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
+          if [ -z "$HOMEBREW_TAP_TOKEN" ]; then
+            echo "No Homebrew tap token set, skipping"
+            exit 0
+          fi
           DMG_SHA256=$(shasum -a 256 .build/Pomodorni.dmg | awk '{print $1}')
           curl -X POST \
             -H "Accept: application/vnd.github+json" \
