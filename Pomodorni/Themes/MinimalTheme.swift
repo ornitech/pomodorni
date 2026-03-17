@@ -5,7 +5,7 @@ struct MinimalTheme: PomodoroTheme {
     let name = "Minimal"
 
     func popoverBackground(sessionType: SessionType?) -> some View {
-        EmptyView()
+        Color(.windowBackgroundColor)
     }
 
     func timerView(remainingSeconds: Int, totalSeconds: Int, sessionType: SessionType, state: TimerState) -> some View {

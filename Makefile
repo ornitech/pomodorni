@@ -34,12 +34,16 @@ app: build
 		$(MAKE) iconset; \
 		cp "$(ICNS_FILE)" "$(APP_CONTENTS)/Resources/AppIcon.icns"; \
 	fi
+	@if [ -f "Pomodorni/Assets/MenuBarIcon.png" ]; then \
+		cp Pomodorni/Assets/MenuBarIcon.png "$(APP_CONTENTS)/Resources/MenuBarIcon.png"; \
+	fi
 	# Copy Sparkle framework if available
 	@SPARKLE_PATH=$$(find $(BUILD_DIR) -name "Sparkle.framework" -type d 2>/dev/null | head -1); \
 	if [ -n "$$SPARKLE_PATH" ]; then \
 		cp -R "$$SPARKLE_PATH" "$(APP_CONTENTS)/Frameworks/"; \
 		echo "Sparkle.framework embedded"; \
 	fi
+	install_name_tool -add_rpath @executable_path/../Frameworks "$(APP_CONTENTS)/MacOS/$(APP_NAME)" 2>/dev/null || true
 	codesign --force --sign "$(SIGNING_IDENTITY)" "$(APP_BUNDLE)"
 	@echo "$(APP_NAME).app assembled at $(APP_BUNDLE)"
 
@@ -60,10 +64,19 @@ run:
 	mkdir -p "$(APP_CONTENTS)/MacOS"
 	cp "$(BUILD_DIR)/debug/$(APP_NAME)" "$(APP_CONTENTS)/MacOS/$(APP_NAME)"
 	cp Pomodorni/Info.plist "$(APP_CONTENTS)/Info.plist"
+	mkdir -p "$(APP_CONTENTS)/Resources"
 	@if [ -f "$(ICNS_FILE)" ]; then \
-		mkdir -p "$(APP_CONTENTS)/Resources"; \
 		cp "$(ICNS_FILE)" "$(APP_CONTENTS)/Resources/AppIcon.icns"; \
 	fi
+	@if [ -f "Pomodorni/Assets/MenuBarIcon.png" ]; then \
+		cp Pomodorni/Assets/MenuBarIcon.png "$(APP_CONTENTS)/Resources/MenuBarIcon.png"; \
+	fi
+	@mkdir -p "$(APP_CONTENTS)/Frameworks"; \
+	SPARKLE_PATH=$$(find $(BUILD_DIR) -name "Sparkle.framework" -type d 2>/dev/null | head -1); \
+	if [ -n "$$SPARKLE_PATH" ]; then \
+		cp -R "$$SPARKLE_PATH" "$(APP_CONTENTS)/Frameworks/"; \
+	fi
+	install_name_tool -add_rpath @executable_path/../Frameworks "$(APP_CONTENTS)/MacOS/$(APP_NAME)" 2>/dev/null || true
 	codesign --force --sign - "$(APP_BUNDLE)"
 	open "$(APP_BUNDLE)"
 
