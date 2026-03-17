@@ -101,6 +101,8 @@ struct TimerPopoverView: View {
             Button(action: { showSettings = true }) {
                 Image(systemName: "gear")
                     .foregroundStyle(.secondary)
+                    .padding(8)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
