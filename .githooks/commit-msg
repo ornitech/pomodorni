@@ -1,0 +1,32 @@
+#!/bin/sh
+# Validate conventional commit format:
+#   type[(scope)][!]: description
+#
+# Allowed types: feat, fix, refactor, chore, docs, test
+
+msg_file="$1"
+first_line=$(head -1 "$msg_file")
+
+# Allow merge commits and reverts
+if echo "$first_line" | grep -qE '^(Merge|Revert) '; then
+  exit 0
+fi
+
+pattern='^(feat|fix|refactor|chore|docs|test)(\([a-z0-9-]+\))?!?: .+'
+
+if ! echo "$first_line" | grep -qE "$pattern"; then
+  echo ""
+  echo "ERROR: Commit message does not follow conventional commits format."
+  echo ""
+  echo "  Expected: type[(scope)][!]: description"
+  echo "  Types:    feat, fix, refactor, chore, docs, test"
+  echo ""
+  echo "  Examples:"
+  echo "    feat: add break skipping"
+  echo "    fix(timer): correct drift calculation"
+  echo "    feat!: drop macOS 13 support"
+  echo ""
+  echo "  Got: $first_line"
+  echo ""
+  exit 1
+fi
