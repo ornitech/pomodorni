@@ -14,7 +14,7 @@ ICNS_FILE = $(BUILD_DIR)/AppIcon.icns
 # Extract version from most recent git tag, default to 1.0.0
 VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "1.0.0")
 
-.PHONY: build app dmg run iconset clean
+.PHONY: build app dmg run iconset clean setup
 
 build:
 	swift build -c release
@@ -104,3 +104,7 @@ iconset:
 clean:
 	rm -rf "$(BUILD_DIR)"
 	@echo "Cleaned build artifacts"
+
+setup:
+	git config core.hooksPath .githooks
+	@echo "Git hooks configured."
