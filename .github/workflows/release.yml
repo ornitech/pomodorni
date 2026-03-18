@@ -1,65 +1,28 @@
-name: Release
+name: Build and Publish
 
 on:
   push:
-    branches: [main]
+    tags: ['v*']
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  publish:
     runs-on: macos-15
     timeout-minutes: 20
-    if: "!contains(github.event.head_commit.message, '[skip-release]')"
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Determine version bump
+      - name: Extract version from tag
         id: version
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          echo "Latest tag: ${LATEST_TAG:-none}"
-
-          if [ -z "$LATEST_TAG" ]; then
-            NEW_VERSION="1.0.0"
-          else
-            VERSION="${LATEST_TAG#v}"
-            MAJOR=$(echo "$VERSION" | cut -d. -f1)
-            MINOR=$(echo "$VERSION" | cut -d. -f2)
-            PATCH=$(echo "$VERSION" | cut -d. -f3)
-
-            COMMIT_MSG=$(git log -1 --pretty=%s)
-            echo "Commit message: $COMMIT_MSG"
-
-            # Conventional commits: type[!]: description
-            # ! = major, feat = minor, everything else = patch
-            if echo "$COMMIT_MSG" | grep -qE '^(feat|fix|refactor|chore|docs|test)(\([a-z0-9-]+\))?!:'; then
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
-            elif echo "$COMMIT_MSG" | grep -qE '^feat(\([a-z0-9-]+\))?:'; then
-              MINOR=$((MINOR + 1))
-              PATCH=0
-            else
-              PATCH=$((PATCH + 1))
-            fi
-
-            NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-          fi
-
-          NEW_TAG="v${NEW_VERSION}"
-          echo "New version: $NEW_VERSION (tag: $NEW_TAG)"
-
-          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Create and push tag
-        run: |
-          git tag "${{ steps.version.outputs.tag }}"
-          git push origin "${{ steps.version.outputs.tag }}"
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION (tag: $GITHUB_REF_NAME)"
 
       - name: Build and create DMG
         run: make dmg VERSION=${{ steps.version.outputs.version }}
@@ -99,6 +62,26 @@ jobs:
           ED_SIGNATURE=$(echo "$RAW_OUTPUT" | grep -o 'sparkle:edSignature="[^"]*"' | sed 's/sparkle:edSignature="//;s/"//')
           echo "signature=$ED_SIGNATURE" >> "$GITHUB_OUTPUT"
           echo "DMG signed successfully"
+
+      - name: Wait for GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for i in $(seq 1 30); do
+            if gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+              echo "Release found"
+              exit 0
+            fi
+            echo "Waiting for release... (attempt $i/30)"
+            sleep 2
+          done
+          echo "Release not found after 60s"
+          exit 1
+
+      - name: Upload DMG to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ steps.version.outputs.tag }}" ".build/Pomodorni.dmg" --clobber
 
       - name: Update appcast on gh-pages
         if: steps.sign.outputs.signature != ''
@@ -142,7 +125,6 @@ jobs:
           size = os.environ["DMG_SIZE"]
 
           if os.path.exists(appcast_path):
-              # Ensure xmlns:sparkle is present before parsing (older writes may have dropped it)
               with open(appcast_path, "r") as f:
                   xml_str = f.read()
               if "xmlns:sparkle" not in xml_str:
@@ -176,18 +158,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add appcast.xml
-          git commit -m "chore: update appcast for ${TAG} [skip-release]"
+          git commit -m "chore: update appcast for ${TAG}"
           git push origin HEAD:gh-pages
           cd -
           git worktree remove /tmp/gh-pages
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: Pomodorni ${{ steps.version.outputs.version }}
-          files: .build/Pomodorni.dmg
-          generate_release_notes: true
 
       - name: Notify Homebrew tap
         env:
