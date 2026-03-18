@@ -168,6 +168,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showAlert(for sessionType: SessionType) {
+        guard !panel.isVisible else { return }
         let autoStarted = settings.autoStartEnabled
         alertPanel.show(
             for: sessionType,
