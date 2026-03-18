@@ -34,11 +34,13 @@ jobs:
             COMMIT_MSG=$(git log -1 --pretty=%s)
             echo "Commit message: $COMMIT_MSG"
 
-            if echo "$COMMIT_MSG" | grep -qi '\[major\]'; then
+            # Conventional commits: type[!]: description
+            # ! = major, feat = minor, everything else = patch
+            if echo "$COMMIT_MSG" | grep -qE '^(feat|fix|refactor|chore|docs|test)(\([a-z0-9-]+\))?!:'; then
               MAJOR=$((MAJOR + 1))
               MINOR=0
               PATCH=0
-            elif echo "$COMMIT_MSG" | grep -qi '\[minor\]'; then
+            elif echo "$COMMIT_MSG" | grep -qE '^feat(\([a-z0-9-]+\))?:'; then
               MINOR=$((MINOR + 1))
               PATCH=0
             else
