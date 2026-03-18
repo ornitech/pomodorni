@@ -13,6 +13,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let alertPanel = AlertPanel()
     var showSettingsCallback: (() -> Void)?
     private var eventMonitor: Any?
+    private var keyMonitor: Any?
     private var updaterController: SPUStandardUpdaterController!
 
     override init() {
@@ -242,6 +243,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             self?.closePanel()
         }
+
+        // Close on Escape key
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.keyCode == 53 {
+                self?.closePanel()
+                return nil
+            }
+            return event
+        }
     }
 
     private func closePanel() {
@@ -249,6 +259,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
             eventMonitor = nil
+        }
+        if let monitor = keyMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyMonitor = nil
         }
     }
 
