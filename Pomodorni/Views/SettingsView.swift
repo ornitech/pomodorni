@@ -46,14 +46,7 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
 
             durationRow(label: "Work", value: $settings.workDuration, range: 1...60, unit: "min")
-            durationRow(label: "Short Break", value: $settings.shortBreakDuration, range: 1...30, unit: "min")
-            durationRow(label: "Long Break", value: $settings.longBreakDuration, range: 1...60, unit: "min")
-
-            HStack {
-                Text("Long break every")
-                Stepper("\(settings.longBreakInterval) sessions", value: $settings.longBreakInterval, in: 1...10)
-            }
-            .font(.callout)
+            durationRow(label: "Break", value: $settings.shortBreakDuration, range: 1...30, unit: "min")
         }
     }
 

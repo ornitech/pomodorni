@@ -8,7 +8,6 @@ struct BoldTheme: PomodoroTheme {
     private static let owlRed = Color(red: 0.83, green: 0.17, blue: 0.12)
     private static let owlOrange = Color(red: 0.94, green: 0.47, blue: 0.19)
     private static let owlNavy = Color(red: 0.17, green: 0.16, blue: 0.37)
-    private static let owlAmber = Color(red: 0.96, green: 0.63, blue: 0.26)
 
     func popoverBackground(sessionType: SessionType?) -> some View {
         let (top, bottom) = gradientColors(for: sessionType)
@@ -25,8 +24,6 @@ struct BoldTheme: PomodoroTheme {
             (Self.owlRed, Self.owlOrange)
         case .shortBreak:
             (Self.owlNavy, Self.owlNavy.opacity(0.85))
-        case .longBreak:
-            (Self.owlAmber, Self.owlOrange)
         }
     }
 
@@ -34,7 +31,6 @@ struct BoldTheme: PomodoroTheme {
         switch sessionType {
         case .work: Self.owlRed
         case .shortBreak: Self.owlNavy
-        case .longBreak: Self.owlAmber
         }
     }
 

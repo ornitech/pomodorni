@@ -90,40 +90,4 @@ struct PomodoroFlowTests {
         engine.start()
         #expect(engine.state == .running(.work))
     }
-
-    @Test("long break cycle: N work sessions trigger long break")
-    func longBreakCycle() {
-        let mockTime = MockTimeProvider()
-        let defaults = UserDefaults(suiteName: "test-\(UUID().uuidString)")!
-        let settings = Settings(defaults: defaults)
-        settings.workDuration = 1
-        settings.shortBreakDuration = 1
-        settings.longBreakDuration = 1
-        settings.longBreakInterval = 2
-        settings.autoStartEnabled = true
-
-        let engine = TimerEngine(settings: settings, timeProvider: mockTime)
-        engine.start()
-
-        // Work 1 → short break
-        mockTime.fire(times: 60)
-        #expect(engine.state == .running(.shortBreak))
-
-        // Short break → work 2
-        mockTime.fire(times: 60)
-        #expect(engine.state == .running(.work))
-
-        // Work 2 → long break (interval = 2)
-        mockTime.fire(times: 60)
-        #expect(engine.state == .running(.longBreak))
-        #expect(engine.completedPomodoros == 2)
-
-        // Long break → work 3
-        mockTime.fire(times: 60)
-        #expect(engine.state == .running(.work))
-
-        // Work 3 → short break (interval counter reset)
-        mockTime.fire(times: 60)
-        #expect(engine.state == .running(.shortBreak))
-    }
 }

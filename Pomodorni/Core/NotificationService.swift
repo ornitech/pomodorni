@@ -22,7 +22,7 @@ final class NotificationService {
         let (title, body): (String, String) = switch sessionType {
         case .work:
             ("Work session complete!", "Time for a break.")
-        case .shortBreak, .longBreak:
+        case .shortBreak:
             ("Break's over!", "Ready to focus?")
         }
         provider.send(title: title, body: body)

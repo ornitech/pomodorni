@@ -23,8 +23,8 @@ struct TimerStateTests {
 
     @Test("completed exposes session type")
     func completedSession() {
-        let state = TimerState.completed(.longBreak)
-        #expect(state.sessionType == .longBreak)
+        let state = TimerState.completed(.shortBreak)
+        #expect(state.sessionType == .shortBreak)
     }
 
     @Test("isRunning is true only for running state")

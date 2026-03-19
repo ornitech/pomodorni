@@ -20,7 +20,6 @@ struct GlassmorphicTheme: PomodoroTheme {
         switch sessionType {
         case .work: .blue
         case .shortBreak: .orange
-        case .longBreak: .purple
         }
     }
 
