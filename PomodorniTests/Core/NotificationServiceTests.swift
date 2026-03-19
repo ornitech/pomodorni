@@ -24,16 +24,6 @@ struct NotificationServiceTests {
         #expect(mock.sentNotifications[0].body == "Ready to focus?")
     }
 
-    @Test("sends correct notification for long break completion")
-    func longBreakCompleteNotification() {
-        let mock = MockNotificationProvider()
-        let service = NotificationService(provider: mock)
-        service.notifySessionComplete(.longBreak)
-        #expect(mock.sentNotifications.count == 1)
-        #expect(mock.sentNotifications[0].title == "Break's over!")
-        #expect(mock.sentNotifications[0].body == "Ready to focus?")
-    }
-
     @Test("requests authorization")
     func requestAuth() async {
         let mock = MockNotificationProvider()

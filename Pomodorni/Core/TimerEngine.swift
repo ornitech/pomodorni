@@ -11,10 +11,9 @@ final class TimerEngine {
 
     var nextSessionName: String {
         guard let type = state.sessionType else { return "Work" }
-        return type.nextSessionType(intervalCounter: intervalCounter, longBreakInterval: settings.longBreakInterval).displayName
+        return type.nextSessionType().displayName
     }
 
-    private var intervalCounter: Int = 0
     private let settings: Settings
     private let timeProvider: TimeProvider
 
@@ -61,7 +60,7 @@ final class TimerEngine {
 
     func startNext() {
         guard case .completed(let type) = state else { return }
-        let next = type.nextSessionType(intervalCounter: intervalCounter, longBreakInterval: settings.longBreakInterval)
+        let next = type.nextSessionType()
         beginSession(next)
     }
 
@@ -94,15 +93,12 @@ final class TimerEngine {
     private func completeSession(_ type: SessionType) {
         if type == .work {
             completedPomodoros += 1
-            intervalCounter += 1
-        } else if type == .longBreak {
-            intervalCounter = 0
         }
 
         onSessionComplete?(type)
 
         if settings.autoStartEnabled {
-            let next = type.nextSessionType(intervalCounter: intervalCounter, longBreakInterval: settings.longBreakInterval)
+            let next = type.nextSessionType()
             beginSession(next)
         } else {
             state = .completed(type)

@@ -6,13 +6,11 @@ import Foundation
 struct TimerEngineTests {
     let mockTime = MockTimeProvider()
 
-    func makeEngine(autoStart: Bool = false, workDuration: Int = 1, shortBreakDuration: Int = 1, longBreakDuration: Int = 1, longBreakInterval: Int = 4) -> TimerEngine {
+    func makeEngine(autoStart: Bool = false, workDuration: Int = 1, shortBreakDuration: Int = 1) -> TimerEngine {
         let defaults = UserDefaults(suiteName: "test-\(UUID().uuidString)")!
         let settings = Settings(defaults: defaults)
         settings.workDuration = workDuration
         settings.shortBreakDuration = shortBreakDuration
-        settings.longBreakDuration = longBreakDuration
-        settings.longBreakInterval = longBreakInterval
         settings.autoStartEnabled = autoStart
         return TimerEngine(settings: settings, timeProvider: mockTime)
     }
@@ -82,30 +80,6 @@ struct TimerEngineTests {
         mockTime.fire(times: 60)  // finish work
         mockTime.fire(times: 60)  // finish break
         #expect(engine.state == .running(.work))
-    }
-
-    // MARK: - Long break logic
-    @Test("long break triggers after N work sessions")
-    func longBreakAfterInterval() {
-        let engine = makeEngine(autoStart: true, longBreakInterval: 2)
-        engine.start()
-        mockTime.fire(times: 60)  // work 1 done -> short break
-        mockTime.fire(times: 60)  // short break done -> work 2
-        mockTime.fire(times: 60)  // work 2 done -> long break (interval reached)
-        #expect(engine.state == .running(.longBreak))
-    }
-
-    @Test("interval counter resets after long break")
-    func intervalResetsAfterLongBreak() {
-        let engine = makeEngine(autoStart: true, longBreakInterval: 2)
-        engine.start()
-        mockTime.fire(times: 60)  // work 1 -> short break
-        mockTime.fire(times: 60)  // short break -> work 2
-        mockTime.fire(times: 60)  // work 2 -> long break
-        mockTime.fire(times: 60)  // long break -> work 3
-        #expect(engine.state == .running(.work))
-        mockTime.fire(times: 60)  // work 3 -> short break (not long, counter reset)
-        #expect(engine.state == .running(.shortBreak))
     }
 
     // MARK: - Pause / Resume

@@ -3,36 +3,25 @@ import Testing
 
 @Suite("SessionType")
 struct SessionTypeTests {
-    @Test("has three cases")
+    @Test("has two cases")
     func cases() {
-        let allCases: [SessionType] = [.work, .shortBreak, .longBreak]
-        #expect(allCases.count == 3)
+        let allCases: [SessionType] = [.work, .shortBreak]
+        #expect(allCases.count == 2)
     }
 
     @Test("display names are correct")
     func displayNames() {
         #expect(SessionType.work.displayName == "Work")
-        #expect(SessionType.shortBreak.displayName == "Short Break")
-        #expect(SessionType.longBreak.displayName == "Long Break")
+        #expect(SessionType.shortBreak.displayName == "Break")
     }
 
-    @Test("next session after work is short break by default")
+    @Test("next session after work is break")
     func nextAfterWork() {
-        #expect(SessionType.work.nextSessionType(intervalCounter: 1, longBreakInterval: 4) == .shortBreak)
+        #expect(SessionType.work.nextSessionType() == .shortBreak)
     }
 
-    @Test("next session after work triggers long break at interval")
-    func nextAfterWorkLongBreak() {
-        #expect(SessionType.work.nextSessionType(intervalCounter: 4, longBreakInterval: 4) == .longBreak)
-    }
-
-    @Test("next session after short break is work")
-    func nextAfterShortBreak() {
-        #expect(SessionType.shortBreak.nextSessionType(intervalCounter: 1, longBreakInterval: 4) == .work)
-    }
-
-    @Test("next session after long break is work")
-    func nextAfterLongBreak() {
-        #expect(SessionType.longBreak.nextSessionType(intervalCounter: 0, longBreakInterval: 4) == .work)
+    @Test("next session after break is work")
+    func nextAfterBreak() {
+        #expect(SessionType.shortBreak.nextSessionType() == .work)
     }
 }

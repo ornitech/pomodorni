@@ -14,8 +14,6 @@ final class Settings {
     private var _alertStyle: AlertStyle
     private var _workDuration: Int
     private var _shortBreakDuration: Int
-    private var _longBreakDuration: Int
-    private var _longBreakInterval: Int
 
     var alertStyle: AlertStyle {
         get { _alertStyle }
@@ -36,20 +34,6 @@ final class Settings {
         set {
             _shortBreakDuration = newValue.clamped(to: 1...30)
             defaults.set(_shortBreakDuration, forKey: "shortBreakDuration")
-        }
-    }
-    var longBreakDuration: Int {
-        get { _longBreakDuration }
-        set {
-            _longBreakDuration = newValue.clamped(to: 1...60)
-            defaults.set(_longBreakDuration, forKey: "longBreakDuration")
-        }
-    }
-    var longBreakInterval: Int {
-        get { _longBreakInterval }
-        set {
-            _longBreakInterval = newValue.clamped(to: 1...10)
-            defaults.set(_longBreakInterval, forKey: "longBreakInterval")
         }
     }
     var autoStartEnabled: Bool {
@@ -74,8 +58,6 @@ final class Settings {
         self._alertStyle = AlertStyle(rawValue: alertRaw) ?? .centered
         self._workDuration = defaults.object(forKey: "workDuration") as? Int ?? 25
         self._shortBreakDuration = defaults.object(forKey: "shortBreakDuration") as? Int ?? 5
-        self._longBreakDuration = defaults.object(forKey: "longBreakDuration") as? Int ?? 15
-        self._longBreakInterval = defaults.object(forKey: "longBreakInterval") as? Int ?? 4
         self.autoStartEnabled = defaults.object(forKey: "autoStartEnabled") as? Bool ?? false
         self.soundEnabled = defaults.object(forKey: "soundEnabled") as? Bool ?? true
         self.showTimeInMenuBar = defaults.object(forKey: "showTimeInMenuBar") as? Bool ?? true
@@ -88,7 +70,6 @@ final class Settings {
         switch sessionType {
         case .work: workDuration * 60
         case .shortBreak: shortBreakDuration * 60
-        case .longBreak: longBreakDuration * 60
         }
     }
 }

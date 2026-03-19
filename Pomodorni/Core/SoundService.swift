@@ -13,7 +13,7 @@ final class SoundService {
         guard settings.soundEnabled else { return }
         let soundName = switch sessionType {
         case .work: "Glass"
-        case .shortBreak, .longBreak: "Breeze"
+        case .shortBreak: "Breeze"
         }
         provider.play(systemSound: soundName)
     }
