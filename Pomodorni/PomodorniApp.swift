@@ -16,7 +16,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var showSettingsCallback: (() -> Void)?
     private var eventMonitor: Any?
     private var keyMonitor: Any?
-    private var wasIdle = true
+    private var wasSessionInactive = true
     private var updaterController: SPUStandardUpdaterController!
 
     override init() {
@@ -71,7 +71,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self.nudgePanel.show(
                 statusItemWindow: self.statusItem?.button?.window,
                 onStart: { [weak self] in
-                    self?.engine.start()
+                    guard let self else { return }
+                    if self.engine.state.isCompleted {
+                        self.engine.startNext()
+                    } else {
+                        self.engine.start()
+                    }
                 },
                 onSnooze: { [weak self] in
                     self?.activityMonitor.snooze()
@@ -140,16 +145,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return }
             self.updateTimerDisplay()
 
-            let isIdle = self.engine.state == .idle
-            if isIdle != self.wasIdle {
-                if isIdle {
+            let isSessionInactive = self.engine.state == .idle || self.engine.state.isCompleted
+            if isSessionInactive != self.wasSessionInactive {
+                if isSessionInactive {
                     self.activityMonitor.startMonitoring()
                 } else {
                     self.activityMonitor.stopMonitoring()
                     self.activityMonitor.resetSilence()
                     self.nudgePanel.dismiss()
                 }
-                self.wasIdle = isIdle
+                self.wasSessionInactive = isSessionInactive
             }
         }
 
