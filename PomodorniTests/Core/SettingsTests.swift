@@ -74,4 +74,33 @@ struct SettingsTests {
         #expect(settings.durationSeconds(for: .work) == 1500)
         #expect(settings.durationSeconds(for: .shortBreak) == 300)
     }
+
+    @Test("activityNudgeEnabled defaults to true")
+    func nudgeEnabledDefault() {
+        let defaults = UserDefaults(suiteName: "test-\(UUID().uuidString)")!
+        let settings = Settings(defaults: defaults)
+        #expect(settings.activityNudgeEnabled == true)
+    }
+
+    @Test("activityNudgeDelay defaults to 1 and clamps to 1...30")
+    func nudgeDelayDefault() {
+        let defaults = UserDefaults(suiteName: "test-\(UUID().uuidString)")!
+        let settings = Settings(defaults: defaults)
+        #expect(settings.activityNudgeDelay == 1)
+        settings.activityNudgeDelay = 0
+        #expect(settings.activityNudgeDelay == 1)
+        settings.activityNudgeDelay = 50
+        #expect(settings.activityNudgeDelay == 30)
+    }
+
+    @Test("nudge settings persist to UserDefaults")
+    func nudgeSettingsPersist() {
+        let defaults = UserDefaults(suiteName: "test-\(UUID().uuidString)")!
+        let settings = Settings(defaults: defaults)
+        settings.activityNudgeEnabled = false
+        settings.activityNudgeDelay = 5
+        let settings2 = Settings(defaults: defaults)
+        #expect(settings2.activityNudgeEnabled == false)
+        #expect(settings2.activityNudgeDelay == 5)
+    }
 }
