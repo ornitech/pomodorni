@@ -14,6 +14,7 @@ final class Settings {
     private var _alertStyle: AlertStyle
     private var _workDuration: Int
     private var _shortBreakDuration: Int
+    private var _activityNudgeDelay: Int
 
     var alertStyle: AlertStyle {
         get { _alertStyle }
@@ -51,6 +52,16 @@ final class Settings {
     var checkForUpdatesAutomatically: Bool {
         didSet { defaults.set(checkForUpdatesAutomatically, forKey: "checkForUpdatesAutomatically") }
     }
+    var activityNudgeEnabled: Bool {
+        didSet { defaults.set(activityNudgeEnabled, forKey: "activityNudgeEnabled") }
+    }
+    var activityNudgeDelay: Int {
+        get { _activityNudgeDelay }
+        set {
+            _activityNudgeDelay = newValue.clamped(to: 1...30)
+            defaults.set(_activityNudgeDelay, forKey: "activityNudgeDelay")
+        }
+    }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -64,6 +75,8 @@ final class Settings {
         let themeRaw = defaults.string(forKey: "selectedTheme") ?? ThemeIdentifier.minimal.rawValue
         self.selectedTheme = ThemeIdentifier(rawValue: themeRaw) ?? .minimal
         self.checkForUpdatesAutomatically = defaults.object(forKey: "checkForUpdatesAutomatically") as? Bool ?? true
+        self.activityNudgeEnabled = defaults.object(forKey: "activityNudgeEnabled") as? Bool ?? true
+        self._activityNudgeDelay = (defaults.object(forKey: "activityNudgeDelay") as? Int ?? 1).clamped(to: 1...30)
     }
 
     func durationSeconds(for sessionType: SessionType) -> Int {
