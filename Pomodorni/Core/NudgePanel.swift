@@ -5,6 +5,7 @@ final class NudgePanel {
     private var panel: NSPanel?
 
     func show(
+        nextSessionName: String?,
         statusItemWindow: NSWindow?,
         onStart: @escaping () -> Void,
         onSnooze: @escaping () -> Void,
@@ -13,6 +14,7 @@ final class NudgePanel {
         dismiss()
 
         let view = NudgeView(
+            nextSessionName: nextSessionName,
             onStart: { [weak self] in
                 onStart()
                 self?.dismiss()
