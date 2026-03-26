@@ -11,9 +11,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let soundService: SoundService
     private let shortcutService: GlobalShortcutService
     private let alertPanel = AlertPanel()
+    private let nudgePanel = NudgePanel()
+    private let activityMonitor: ActivityMonitor
     var showSettingsCallback: (() -> Void)?
     private var eventMonitor: Any?
     private var keyMonitor: Any?
+    private var wasIdle = true
     private var updaterController: SPUStandardUpdaterController!
 
     override init() {
@@ -22,6 +25,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let notificationService = NotificationService()
         let soundService = SoundService(settings: settings)
         let shortcutService = GlobalShortcutService()
+        let activityMonitor = ActivityMonitor(
+            settings: settings,
+            activityProvider: SystemActivityProvider()
+        )
+        self.activityMonitor = activityMonitor
 
         self.settings = settings
         self.engine = engine
@@ -56,6 +64,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.alertPanel.dismiss()
                 self?.resetStatusIcon()
             }
+        }
+
+        activityMonitor.onNudge = { [weak self] in
+            guard let self else { return }
+            self.nudgePanel.show(
+                statusItemWindow: self.statusItem?.button?.window,
+                onStart: { [weak self] in
+                    self?.engine.start()
+                },
+                onSnooze: { [weak self] in
+                    self?.activityMonitor.snooze()
+                },
+                onSilence: { [weak self] in
+                    self?.activityMonitor.silenceUntilNextSession()
+                }
+            )
+        }
+
+        activityMonitor.onDismissNudge = { [weak self] in
+            self?.nudgePanel.dismiss()
         }
     }
 
@@ -109,7 +137,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            self?.updateTimerDisplay()
+            guard let self else { return }
+            self.updateTimerDisplay()
+
+            let isIdle = self.engine.state == .idle
+            if isIdle != self.wasIdle {
+                if isIdle {
+                    self.activityMonitor.startMonitoring()
+                } else {
+                    self.activityMonitor.stopMonitoring()
+                    self.activityMonitor.resetSilence()
+                    self.nudgePanel.dismiss()
+                }
+                self.wasIdle = isIdle
+            }
         }
 
         // Sync Sparkle auto-update setting
@@ -117,6 +158,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return }
             self.updaterController.updater.automaticallyChecksForUpdates = self.settings.checkForUpdatesAutomatically
         }
+
+        activityMonitor.startMonitoring()
     }
 
     private func updateTimerDisplay() {
@@ -233,6 +276,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func openPanel() {
         alertPanel.dismiss()
+        nudgePanel.dismiss()
         resetStatusIcon()
 
         panel.setFrameOrigin(panelOrigin())
