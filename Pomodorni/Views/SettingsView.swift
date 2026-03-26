@@ -12,6 +12,8 @@ struct SettingsView: View {
                 Divider()
                 behaviorSection
                 Divider()
+                nudgeSection
+                Divider()
                 appearanceSection
                 Divider()
                 shortcutsSection
@@ -91,6 +93,21 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
+            }
+        }
+    }
+
+    private var nudgeSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Activity Nudge")
+                .font(.subheadline.bold())
+                .foregroundStyle(.secondary)
+
+            Toggle("Remind me to start a session", isOn: $settings.activityNudgeEnabled)
+                .font(.callout)
+
+            if settings.activityNudgeEnabled {
+                durationRow(label: "Delay", value: $settings.activityNudgeDelay, range: 1...30, unit: "min")
             }
         }
     }
