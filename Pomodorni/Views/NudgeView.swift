@@ -1,9 +1,17 @@
 import SwiftUI
 
 struct NudgeView: View {
+    let nextSessionName: String?
     let onStart: () -> Void
     let onSnooze: () -> Void
     let onSilence: () -> Void
+
+    private var message: String {
+        if let name = nextSessionName {
+            return "It looks like you're working but haven't started your \(name.lowercased()). Want to start one now?"
+        }
+        return "It looks like you're working but haven't started a session. Want to start one now?"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -11,13 +19,13 @@ struct NudgeView: View {
                 Image(systemName: "deskclock.fill")
                     .font(.title2)
                     .foregroundStyle(.indigo)
-                Text("It looks like you're working but haven't started a session. Want to start one now?")
+                Text(message)
                     .font(.callout.weight(.medium))
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             HStack(spacing: 8) {
-                Button("Start", action: onStart)
+                Button(nextSessionName.map { "Start \($0)" } ?? "Start", action: onStart)
                     .buttonStyle(.borderedProminent)
                     .tint(.indigo)
                     .controlSize(.small)

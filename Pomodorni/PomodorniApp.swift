@@ -68,7 +68,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         activityMonitor.onNudge = { [weak self] in
             guard let self else { return }
+            let nextSession: String? = self.engine.state.isCompleted ? self.engine.nextSessionName : nil
             self.nudgePanel.show(
+                nextSessionName: nextSession,
                 statusItemWindow: self.statusItem?.button?.window,
                 onStart: { [weak self] in
                     guard let self else { return }
