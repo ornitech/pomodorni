@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/ornitech/pomodorni/compare/v1.2.1...v1.2.2) (2026-03-31)
+
+
+### Bug Fixes
+
+* sign all executables inside Sparkle.framework ([#10](https://github.com/ornitech/pomodorni/issues/10)) ([c28bb38](https://github.com/ornitech/pomodorni/commit/c28bb38932d47412cd46996d03baacf19daf66f8))
+
 ## [1.2.1](https://github.com/ornitech/pomodorni/compare/v1.2.0...v1.2.1) (2026-03-31)
 
 
