@@ -24,8 +24,56 @@ jobs:
           echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
           echo "Version: $VERSION (tag: $GITHUB_REF_NAME)"
 
+      - name: Import signing certificate
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          echo "$APPLE_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/certificate.p12"
+
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+
+          # Extract the signing identity
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "identity=$IDENTITY" >> "$GITHUB_OUTPUT"
+          echo "keychain_path=$KEYCHAIN_PATH" >> "$GITHUB_OUTPUT"
+          echo "Signing identity: $IDENTITY"
+        id: cert
+
       - name: Build and create DMG
-        run: make dmg VERSION=${{ steps.version.outputs.version }}
+        run: make dmg VERSION=${{ steps.version.outputs.version }} SIGNING_IDENTITY="${{ steps.cert.outputs.identity }}"
+
+      - name: Notarize DMG
+        env:
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_KEY_P8: ${{ secrets.APPLE_NOTARY_KEY_P8 }}
+        run: |
+          KEY_PATH="$RUNNER_TEMP/notary-key.p8"
+          echo "$APPLE_NOTARY_KEY_P8" > "$KEY_PATH"
+
+          xcrun notarytool submit ".build/Pomodorni.dmg" \
+            --issuer "$APPLE_NOTARY_ISSUER_ID" \
+            --key-id "$APPLE_NOTARY_KEY_ID" \
+            --key "$KEY_PATH" \
+            --wait
+
+          xcrun stapler staple ".build/Pomodorni.dmg"
+          rm "$KEY_PATH"
+          echo "Notarization and stapling complete"
 
       - name: Download Sparkle tools
         id: sparkle-tools
@@ -185,3 +233,7 @@ jobs:
                 \"url\": \"https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/Pomodorni.dmg\"
               }
             }"
+
+      - name: Clean up keychain
+        if: always()
+        run: security delete-keychain "${{ steps.cert.outputs.keychain_path }}" 2>/dev/null || true
