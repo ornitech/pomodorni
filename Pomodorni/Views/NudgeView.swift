@@ -6,9 +6,13 @@ struct NudgeView: View {
     let onSnooze: () -> Void
     let onSilence: () -> Void
 
+    private var isBreak: Bool {
+        nextSessionName?.lowercased().contains("break") == true
+    }
+
     private var message: String {
-        if let name = nextSessionName {
-            return "It looks like you're working but haven't started your \(name.lowercased()). Want to start one now?"
+        if isBreak {
+            return "You are due for a break, but it looks like you are working. Want to start your break now?"
         }
         return "It looks like you're working but haven't started a session. Want to start one now?"
     }
