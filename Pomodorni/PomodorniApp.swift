@@ -17,6 +17,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var eventMonitor: Any?
     private var keyMonitor: Any?
     private var wasSessionInactive = true
+    private var wasOnBreak = false
     private var updaterController: SPUStandardUpdaterController!
 
     override init() {
@@ -68,25 +69,40 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         activityMonitor.onNudge = { [weak self] in
             guard let self else { return }
-            let nextSession: String? = self.engine.state.isCompleted ? self.engine.nextSessionName : nil
-            self.nudgePanel.show(
-                nextSessionName: nextSession,
-                statusItemWindow: self.statusItem?.button?.window,
-                onStart: { [weak self] in
-                    guard let self else { return }
-                    if self.engine.state.isCompleted {
-                        self.engine.startNext()
-                    } else {
-                        self.engine.start()
+            let isOnBreak = self.engine.state == .running(.shortBreak)
+            if isOnBreak {
+                self.nudgePanel.show(
+                    nextSessionName: nil,
+                    duringBreak: true,
+                    statusItemWindow: self.statusItem?.button?.window,
+                    onSnooze: { [weak self] in
+                        self?.activityMonitor.snooze()
+                    },
+                    onSilence: { [weak self] in
+                        self?.activityMonitor.silenceUntilNextSession()
                     }
-                },
-                onSnooze: { [weak self] in
-                    self?.activityMonitor.snooze()
-                },
-                onSilence: { [weak self] in
-                    self?.activityMonitor.silenceUntilNextSession()
-                }
-            )
+                )
+            } else {
+                let nextSession: String? = self.engine.state.isCompleted ? self.engine.nextSessionName : nil
+                self.nudgePanel.show(
+                    nextSessionName: nextSession,
+                    statusItemWindow: self.statusItem?.button?.window,
+                    onStart: { [weak self] in
+                        guard let self else { return }
+                        if self.engine.state.isCompleted {
+                            self.engine.startNext()
+                        } else {
+                            self.engine.start()
+                        }
+                    },
+                    onSnooze: { [weak self] in
+                        self?.activityMonitor.snooze()
+                    },
+                    onSilence: { [weak self] in
+                        self?.activityMonitor.silenceUntilNextSession()
+                    }
+                )
+            }
         }
 
         activityMonitor.onDismissNudge = { [weak self] in
@@ -148,6 +164,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self.updateTimerDisplay()
 
             let isSessionInactive = self.engine.state == .idle || self.engine.state.isCompleted
+            let isOnBreak = self.engine.state == .running(.shortBreak)
+
             if isSessionInactive != self.wasSessionInactive {
                 if isSessionInactive {
                     self.activityMonitor.startMonitoring()
@@ -157,6 +175,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     self.nudgePanel.dismiss()
                 }
                 self.wasSessionInactive = isSessionInactive
+            }
+
+            if isOnBreak != self.wasOnBreak {
+                if isOnBreak {
+                    self.activityMonitor.resetSilence()
+                    self.activityMonitor.startMonitoring()
+                } else if !isSessionInactive {
+                    self.activityMonitor.stopMonitoring()
+                    self.activityMonitor.resetSilence()
+                    self.nudgePanel.dismiss()
+                }
+                self.wasOnBreak = isOnBreak
             }
         }
 

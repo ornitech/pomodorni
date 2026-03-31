@@ -1,6 +1,7 @@
 APP_NAME = Pomodorni
 BUNDLE_ID = com.ornitech.pomodorni
 SIGNING_IDENTITY ?= -
+ENTITLEMENTS = Pomodorni/Pomodorni.entitlements
 
 BUILD_DIR = .build
 APP_BUNDLE = $(BUILD_DIR)/$(APP_NAME).app
@@ -14,7 +15,7 @@ ICNS_FILE = $(BUILD_DIR)/AppIcon.icns
 # Extract version from most recent git tag, default to 1.0.0
 VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "1.0.0")
 
-.PHONY: build app dmg run iconset clean setup
+.PHONY: build app dmg notarize run iconset clean setup
 
 build:
 	swift build -c release
@@ -44,7 +45,11 @@ app: build
 		echo "Sparkle.framework embedded"; \
 	fi
 	install_name_tool -add_rpath @executable_path/../Frameworks "$(APP_CONTENTS)/MacOS/$(APP_NAME)" 2>/dev/null || true
-	codesign --force --sign "$(SIGNING_IDENTITY)" "$(APP_BUNDLE)"
+	# Sign embedded frameworks first, then the app bundle
+	@find "$(APP_CONTENTS)/Frameworks" -name "*.framework" -o -name "*.dylib" 2>/dev/null | while read fw; do \
+		codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime "$$fw"; \
+	done
+	codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --entitlements "$(ENTITLEMENTS)" "$(APP_BUNDLE)"
 	@echo "$(APP_NAME).app assembled at $(APP_BUNDLE)"
 
 dmg: app
@@ -58,6 +63,14 @@ dmg: app
 		"$(BUILD_DIR)/$(DMG_NAME)"
 	rm -rf "$(BUILD_DIR)/dmg-staging"
 	@echo "DMG created at $(BUILD_DIR)/$(DMG_NAME)"
+
+notarize: dmg
+	@echo "Notarizing $(DMG_NAME)..."
+	xcrun notarytool submit "$(BUILD_DIR)/$(DMG_NAME)" \
+		--keychain-profile "notarytool-profile" \
+		--wait
+	xcrun stapler staple "$(BUILD_DIR)/$(DMG_NAME)"
+	@echo "Notarization complete"
 
 run:
 	swift build

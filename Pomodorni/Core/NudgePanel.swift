@@ -6,8 +6,9 @@ final class NudgePanel {
 
     func show(
         nextSessionName: String?,
+        duringBreak: Bool = false,
         statusItemWindow: NSWindow?,
-        onStart: @escaping () -> Void,
+        onStart: (() -> Void)? = nil,
         onSnooze: @escaping () -> Void,
         onSilence: @escaping () -> Void
     ) {
@@ -15,9 +16,12 @@ final class NudgePanel {
 
         let view = NudgeView(
             nextSessionName: nextSessionName,
-            onStart: { [weak self] in
-                onStart()
-                self?.dismiss()
+            duringBreak: duringBreak,
+            onStart: onStart.map { start in
+                { [weak self] in
+                    start()
+                    self?.dismiss()
+                }
             },
             onSnooze: { [weak self] in
                 onSnooze()
