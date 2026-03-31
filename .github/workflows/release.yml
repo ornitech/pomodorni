@@ -3,6 +3,12 @@ name: Build and Publish
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Test signing and notarization without publishing'
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -10,7 +16,7 @@ permissions:
 jobs:
   publish:
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -19,10 +25,16 @@ jobs:
       - name: Extract version from tag
         id: version
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ "$GITHUB_REF_NAME" == v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            TAG="$GITHUB_REF_NAME"
+          else
+            VERSION="0.0.0-test"
+            TAG=""
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
-          echo "Version: $VERSION (tag: $GITHUB_REF_NAME)"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION (tag: ${TAG:-none})"
 
       - name: Import signing certificate
         env:
@@ -53,10 +65,10 @@ jobs:
           echo "Signing identity: $IDENTITY"
         id: cert
 
-      - name: Build and create DMG
-        run: make dmg VERSION=${{ steps.version.outputs.version }} SIGNING_IDENTITY="${{ steps.cert.outputs.identity }}"
+      - name: Build app
+        run: make app VERSION=${{ steps.version.outputs.version }} SIGNING_IDENTITY="${{ steps.cert.outputs.identity }}"
 
-      - name: Notarize DMG
+      - name: Notarize app
         env:
           APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
@@ -64,39 +76,41 @@ jobs:
         run: |
           KEY_PATH="$RUNNER_TEMP/notary-key.p8"
           printf '%s' "$APPLE_NOTARY_KEY_P8" > "$KEY_PATH"
+          NOTARY_ARGS="--issuer $APPLE_NOTARY_ISSUER_ID --key-id $APPLE_NOTARY_KEY_ID --key $KEY_PATH"
+
+          echo "Creating ZIP for notarization..."
+          ditto -c -k --keepParent .build/Pomodorni.app /tmp/Pomodorni-notarize.zip
 
           echo "Submitting for notarization..."
-          xcrun notarytool submit ".build/Pomodorni.dmg" \
-            --issuer "$APPLE_NOTARY_ISSUER_ID" \
-            --key-id "$APPLE_NOTARY_KEY_ID" \
-            --key "$KEY_PATH" \
-            --wait \
-            --timeout 10m \
-            2>&1 | tee /tmp/notarize-output.txt
+          RESULT=$(xcrun notarytool submit /tmp/Pomodorni-notarize.zip $NOTARY_ARGS --wait -f json 2>&1)
+          echo "$RESULT" | python3 -m json.tool 2>/dev/null || echo "$RESULT"
 
-          if grep -q "status: Invalid" /tmp/notarize-output.txt; then
-            echo "Notarization failed. Fetching log..."
-            SUBMISSION_ID=$(grep "id:" /tmp/notarize-output.txt | head -1 | awk '{print $2}')
-            xcrun notarytool log "$SUBMISSION_ID" \
-              --issuer "$APPLE_NOTARY_ISSUER_ID" \
-              --key-id "$APPLE_NOTARY_KEY_ID" \
-              --key "$KEY_PATH"
+          STATUS=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])" 2>/dev/null || echo "unknown")
+          ID=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])" 2>/dev/null || echo "")
+
+          if [ "$STATUS" != "Accepted" ]; then
+            echo "Notarization failed with status: $STATUS"
+            if [ -n "$ID" ]; then
+              echo "Fetching log..."
+              xcrun notarytool log "$ID" $NOTARY_ARGS 2>&1 || true
+            fi
             rm "$KEY_PATH"
             exit 1
           fi
 
-          if ! grep -q "status: Accepted" /tmp/notarize-output.txt; then
-            echo "Notarization did not succeed. Output:"
-            cat /tmp/notarize-output.txt
-            rm "$KEY_PATH"
-            exit 1
-          fi
-
-          xcrun stapler staple ".build/Pomodorni.dmg"
-          rm "$KEY_PATH"
+          xcrun stapler staple .build/Pomodorni.app
+          rm "$KEY_PATH" /tmp/Pomodorni-notarize.zip
           echo "Notarization and stapling complete"
 
+      - name: Create DMG
+        run: make dmg VERSION=${{ steps.version.outputs.version }} SIGNING_IDENTITY="${{ steps.cert.outputs.identity }}"
+
+      - name: Dry run summary
+        if: inputs.dry_run == true
+        run: echo "Dry run complete -- signing and notarization passed. Skipping publish steps."
+
       - name: Download Sparkle tools
+        if: inputs.dry_run != true
         id: sparkle-tools
         run: |
           SPARKLE_VERSION=$(python3 -c "
@@ -119,6 +133,7 @@ jobs:
           echo "tool_path=/tmp/sparkle/bin/sign_update" >> "$GITHUB_OUTPUT"
 
       - name: Sign DMG with Sparkle
+        if: inputs.dry_run != true
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         id: sign
@@ -133,6 +148,7 @@ jobs:
           echo "DMG signed successfully"
 
       - name: Wait for GitHub Release
+        if: inputs.dry_run != true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -148,12 +164,13 @@ jobs:
           exit 1
 
       - name: Upload DMG to release
+        if: inputs.dry_run != true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload "${{ steps.version.outputs.tag }}" ".build/Pomodorni.dmg" --clobber
 
       - name: Update appcast on gh-pages
-        if: steps.sign.outputs.signature != ''
+        if: inputs.dry_run != true && steps.sign.outputs.signature != ''
         env:
           VERSION: ${{ steps.version.outputs.version }}
           TAG: ${{ steps.version.outputs.tag }}
@@ -233,6 +250,7 @@ jobs:
           git worktree remove /tmp/gh-pages
 
       - name: Notify Homebrew tap
+        if: inputs.dry_run != true
         env:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
