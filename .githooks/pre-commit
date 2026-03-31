@@ -1,0 +1,10 @@
+#!/bin/sh
+# Run tests before allowing commit
+
+echo "Running tests..."
+if ! swift test --quiet 2>&1; then
+  echo ""
+  echo "ERROR: Tests failed. Fix failing tests before committing."
+  echo ""
+  exit 1
+fi
