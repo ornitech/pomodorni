@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.3](https://github.com/ornitech/pomodorni/compare/v1.2.2...v1.2.3) (2026-03-31)
+
+
+### Bug Fixes
+
+* prevent silent codesign failures and notarytool hangs ([#12](https://github.com/ornitech/pomodorni/issues/12)) ([7755e69](https://github.com/ornitech/pomodorni/commit/7755e696abcaf79506d91a8a491b08775e0685fe))
+
 ## [1.2.2](https://github.com/ornitech/pomodorni/compare/v1.2.1...v1.2.2) (2026-03-31)
 
 
