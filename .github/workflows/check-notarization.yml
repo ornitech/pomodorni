@@ -1,0 +1,38 @@
+name: Check Notarization Status
+
+on:
+  workflow_dispatch:
+    inputs:
+      submission_id:
+        description: 'Notarization submission ID to check'
+        required: true
+        type: string
+
+jobs:
+  check:
+    runs-on: macos-15
+    timeout-minutes: 5
+    steps:
+      - name: Check notarization status
+        env:
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_KEY_P8: ${{ secrets.APPLE_NOTARY_KEY_P8 }}
+        run: |
+          KEY_PATH="$RUNNER_TEMP/notary-key.p8"
+          printf '%s' "$APPLE_NOTARY_KEY_P8" > "$KEY_PATH"
+
+          echo "Checking submission: ${{ inputs.submission_id }}"
+          xcrun notarytool info "${{ inputs.submission_id }}" \
+            --issuer "$APPLE_NOTARY_ISSUER_ID" \
+            --key-id "$APPLE_NOTARY_KEY_ID" \
+            --key "$KEY_PATH" 2>&1
+
+          echo ""
+          echo "Fetching log (if available)..."
+          xcrun notarytool log "${{ inputs.submission_id }}" \
+            --issuer "$APPLE_NOTARY_ISSUER_ID" \
+            --key-id "$APPLE_NOTARY_KEY_ID" \
+            --key "$KEY_PATH" 2>&1 || echo "(log not yet available)"
+
+          rm "$KEY_PATH"
