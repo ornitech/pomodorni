@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/ornitech/pomodorni/compare/v1.2.0...v1.2.1) (2026-03-31)
+
+
+### Bug Fixes
+
+* sign nested code objects for notarization ([#8](https://github.com/ornitech/pomodorni/issues/8)) ([e525bbd](https://github.com/ornitech/pomodorni/commit/e525bbdd43e25a1f68e1b54f54c4acfd863dd909))
+
 ## [1.2.0](https://github.com/ornitech/pomodorni/compare/v1.1.0...v1.2.0) (2026-03-31)
 
 
