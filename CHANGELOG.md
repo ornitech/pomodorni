@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/ornitech/pomodorni/compare/v1.1.0...v1.2.0) (2026-03-31)
+
+
+### Features
+
+* add codesigning workflow and break-specific nudges ([#7](https://github.com/ornitech/pomodorni/issues/7)) ([19be5e1](https://github.com/ornitech/pomodorni/commit/19be5e1ced740f2d8cd7e2d19aa59150c3aa3bfd))
+
 ## [1.1.0](https://github.com/ornitech/pomodorni/compare/v1.0.0...v1.1.0) (2026-03-31)
 
 
