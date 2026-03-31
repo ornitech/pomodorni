@@ -47,7 +47,9 @@ app: build
 	install_name_tool -add_rpath @executable_path/../Frameworks "$(APP_CONTENTS)/MacOS/$(APP_NAME)" 2>/dev/null || true
 	# Sign all executables and libraries inside frameworks, then frameworks, then the app
 	@find "$(APP_CONTENTS)/Frameworks" -type f -perm +111 2>/dev/null | while read bin; do \
-		codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp "$$bin" 2>/dev/null || true; \
+		if file "$$bin" | grep -q "Mach-O"; then \
+			codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp "$$bin"; \
+		fi; \
 	done
 	@find "$(APP_CONTENTS)/Frameworks" -name "*.dylib" -type f 2>/dev/null | while read lib; do \
 		codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp "$$lib"; \

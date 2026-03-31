@@ -63,23 +63,31 @@ jobs:
           APPLE_NOTARY_KEY_P8: ${{ secrets.APPLE_NOTARY_KEY_P8 }}
         run: |
           KEY_PATH="$RUNNER_TEMP/notary-key.p8"
-          echo "$APPLE_NOTARY_KEY_P8" > "$KEY_PATH"
+          printf '%s' "$APPLE_NOTARY_KEY_P8" > "$KEY_PATH"
 
-          SUBMIT_OUTPUT=$(xcrun notarytool submit ".build/Pomodorni.dmg" \
+          echo "Submitting for notarization..."
+          xcrun notarytool submit ".build/Pomodorni.dmg" \
             --issuer "$APPLE_NOTARY_ISSUER_ID" \
             --key-id "$APPLE_NOTARY_KEY_ID" \
             --key "$KEY_PATH" \
-            --wait 2>&1) || true
-          echo "$SUBMIT_OUTPUT"
+            --wait \
+            --timeout 10m \
+            2>&1 | tee /tmp/notarize-output.txt
 
-          SUBMISSION_ID=$(echo "$SUBMIT_OUTPUT" | grep "id:" | head -1 | awk '{print $2}')
-
-          if echo "$SUBMIT_OUTPUT" | grep -q "status: Invalid"; then
+          if grep -q "status: Invalid" /tmp/notarize-output.txt; then
             echo "Notarization failed. Fetching log..."
+            SUBMISSION_ID=$(grep "id:" /tmp/notarize-output.txt | head -1 | awk '{print $2}')
             xcrun notarytool log "$SUBMISSION_ID" \
               --issuer "$APPLE_NOTARY_ISSUER_ID" \
               --key-id "$APPLE_NOTARY_KEY_ID" \
               --key "$KEY_PATH"
+            rm "$KEY_PATH"
+            exit 1
+          fi
+
+          if ! grep -q "status: Accepted" /tmp/notarize-output.txt; then
+            echo "Notarization did not succeed. Output:"
+            cat /tmp/notarize-output.txt
             rm "$KEY_PATH"
             exit 1
           fi
