@@ -65,11 +65,24 @@ jobs:
           KEY_PATH="$RUNNER_TEMP/notary-key.p8"
           echo "$APPLE_NOTARY_KEY_P8" > "$KEY_PATH"
 
-          xcrun notarytool submit ".build/Pomodorni.dmg" \
+          SUBMIT_OUTPUT=$(xcrun notarytool submit ".build/Pomodorni.dmg" \
             --issuer "$APPLE_NOTARY_ISSUER_ID" \
             --key-id "$APPLE_NOTARY_KEY_ID" \
             --key "$KEY_PATH" \
-            --wait
+            --wait 2>&1) || true
+          echo "$SUBMIT_OUTPUT"
+
+          SUBMISSION_ID=$(echo "$SUBMIT_OUTPUT" | grep "id:" | head -1 | awk '{print $2}')
+
+          if echo "$SUBMIT_OUTPUT" | grep -q "status: Invalid"; then
+            echo "Notarization failed. Fetching log..."
+            xcrun notarytool log "$SUBMISSION_ID" \
+              --issuer "$APPLE_NOTARY_ISSUER_ID" \
+              --key-id "$APPLE_NOTARY_KEY_ID" \
+              --key "$KEY_PATH"
+            rm "$KEY_PATH"
+            exit 1
+          fi
 
           xcrun stapler staple ".build/Pomodorni.dmg"
           rm "$KEY_PATH"

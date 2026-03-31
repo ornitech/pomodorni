@@ -45,11 +45,17 @@ app: build
 		echo "Sparkle.framework embedded"; \
 	fi
 	install_name_tool -add_rpath @executable_path/../Frameworks "$(APP_CONTENTS)/MacOS/$(APP_NAME)" 2>/dev/null || true
-	# Sign embedded frameworks first, then the app bundle
-	@find "$(APP_CONTENTS)/Frameworks" -name "*.framework" -o -name "*.dylib" 2>/dev/null | while read fw; do \
-		codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime "$$fw"; \
+	# Sign all nested code objects inside-out, then the app bundle
+	@find "$(APP_CONTENTS)/Frameworks" \( -name "*.xpc" -o -name "*.app" -o -name "*.appex" \) -type d 2>/dev/null | while read nested; do \
+		codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp "$$nested"; \
 	done
-	codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --entitlements "$(ENTITLEMENTS)" "$(APP_BUNDLE)"
+	@find "$(APP_CONTENTS)/Frameworks" -name "*.dylib" -type f 2>/dev/null | while read lib; do \
+		codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp "$$lib"; \
+	done
+	@find "$(APP_CONTENTS)/Frameworks" -maxdepth 1 -name "*.framework" -type d 2>/dev/null | while read fw; do \
+		codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp "$$fw"; \
+	done
+	codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp --entitlements "$(ENTITLEMENTS)" "$(APP_BUNDLE)"
 	@echo "$(APP_NAME).app assembled at $(APP_BUNDLE)"
 
 dmg: app
