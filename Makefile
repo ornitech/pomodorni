@@ -41,7 +41,7 @@ app: build
 	# Copy Sparkle framework if available
 	@SPARKLE_PATH=$$(find $(BUILD_DIR) -name "Sparkle.framework" -type d 2>/dev/null | head -1); \
 	if [ -n "$$SPARKLE_PATH" ]; then \
-		cp -R "$$SPARKLE_PATH" "$(APP_CONTENTS)/Frameworks/"; \
+		ditto "$$SPARKLE_PATH" "$(APP_CONTENTS)/Frameworks/Sparkle.framework"; \
 		echo "Sparkle.framework embedded"; \
 	fi
 	install_name_tool -add_rpath @executable_path/../Frameworks "$(APP_CONTENTS)/MacOS/$(APP_NAME)" 2>/dev/null || true
