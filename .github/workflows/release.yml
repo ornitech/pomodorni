@@ -82,18 +82,28 @@ jobs:
           ditto -c -k --keepParent .build/Pomodorni.app /tmp/Pomodorni-notarize.zip
 
           echo "Submitting for notarization..."
-          RESULT=$(xcrun notarytool submit /tmp/Pomodorni-notarize.zip $NOTARY_ARGS --wait -f json 2>&1)
-          echo "$RESULT" | python3 -m json.tool 2>/dev/null || echo "$RESULT"
+          SUBMIT_OUTPUT=$(xcrun notarytool submit /tmp/Pomodorni-notarize.zip $NOTARY_ARGS -f json 2>&1)
+          echo "$SUBMIT_OUTPUT" | python3 -m json.tool 2>/dev/null || echo "$SUBMIT_OUTPUT"
 
-          STATUS=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])" 2>/dev/null || echo "unknown")
-          ID=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])" 2>/dev/null || echo "")
+          ID=$(echo "$SUBMIT_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])" 2>/dev/null || echo "")
+          if [ -z "$ID" ]; then
+            echo "Failed to get submission ID"
+            rm "$KEY_PATH"
+            exit 1
+          fi
+          echo "Submission ID: $ID"
+
+          echo "Waiting for notarization to complete..."
+          WAIT_OUTPUT=$(xcrun notarytool wait "$ID" $NOTARY_ARGS -f json 2>&1)
+          echo "$WAIT_OUTPUT" | python3 -m json.tool 2>/dev/null || echo "$WAIT_OUTPUT"
+
+          STATUS=$(echo "$WAIT_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])" 2>/dev/null || echo "unknown")
+
+          echo "Fetching notarization log..."
+          xcrun notarytool log "$ID" $NOTARY_ARGS 2>&1 || true
 
           if [ "$STATUS" != "Accepted" ]; then
             echo "Notarization failed with status: $STATUS"
-            if [ -n "$ID" ]; then
-              echo "Fetching log..."
-              xcrun notarytool log "$ID" $NOTARY_ARGS 2>&1 || true
-            fi
             rm "$KEY_PATH"
             exit 1
           fi
