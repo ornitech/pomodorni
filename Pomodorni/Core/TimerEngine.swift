@@ -3,6 +3,7 @@ import Foundation
 @Observable
 final class TimerEngine {
     private(set) var state: TimerState = .idle
+    private(set) var isAutoStartedSession: Bool = false
     private(set) var remainingSeconds: Int = 0
     private(set) var totalSeconds: Int = 0
     private(set) var completedPomodoros: Int = 0
@@ -24,6 +25,7 @@ final class TimerEngine {
 
     func start() {
         guard state == .idle else { return }
+        isAutoStartedSession = false
         beginSession(.work)
     }
 
@@ -50,16 +52,19 @@ final class TimerEngine {
         state = .idle
         remainingSeconds = 0
         totalSeconds = 0
+        isAutoStartedSession = false
     }
 
     func restart() {
         guard let type = state.sessionType, (state.isRunning || state.isPaused) else { return }
+        isAutoStartedSession = false
         timeProvider.invalidate()
         beginSession(type)
     }
 
     func startNext() {
         guard case .completed(let type) = state else { return }
+        isAutoStartedSession = false
         let next = type.nextSessionType()
         beginSession(next)
     }
@@ -99,10 +104,12 @@ final class TimerEngine {
 
         if settings.autoStartEnabled {
             let next = type.nextSessionType()
+            isAutoStartedSession = true
             beginSession(next)
         } else {
             state = .completed(type)
             remainingSeconds = 0
+            isAutoStartedSession = false
         }
     }
 }
