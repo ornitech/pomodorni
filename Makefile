@@ -41,29 +41,34 @@ app: build
 	# Copy Sparkle framework if available
 	@SPARKLE_PATH=$$(find $(BUILD_DIR) -name "Sparkle.framework" -type d 2>/dev/null | head -1); \
 	if [ -n "$$SPARKLE_PATH" ]; then \
-		cp -R "$$SPARKLE_PATH" "$(APP_CONTENTS)/Frameworks/"; \
+		ditto "$$SPARKLE_PATH" "$(APP_CONTENTS)/Frameworks/Sparkle.framework"; \
 		echo "Sparkle.framework embedded"; \
 	fi
 	install_name_tool -add_rpath @executable_path/../Frameworks "$(APP_CONTENTS)/MacOS/$(APP_NAME)" 2>/dev/null || true
-	# Sign all executables and libraries inside frameworks, then frameworks, then the app
-	@find "$(APP_CONTENTS)/Frameworks" -type f -perm +111 2>/dev/null | while read bin; do \
-		if file "$$bin" | grep -q "Mach-O"; then \
-			codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp "$$bin"; \
-		fi; \
-	done
-	@find "$(APP_CONTENTS)/Frameworks" -name "*.dylib" -type f 2>/dev/null | while read lib; do \
-		codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp "$$lib"; \
-	done
-	@find "$(APP_CONTENTS)/Frameworks" \( -name "*.xpc" -o -name "*.app" -o -name "*.appex" \) -type d 2>/dev/null | while read nested; do \
-		codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp "$$nested"; \
-	done
-	@find "$(APP_CONTENTS)/Frameworks" -maxdepth 1 -name "*.framework" -type d 2>/dev/null | while read fw; do \
-		codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp "$$fw"; \
-	done
+	xattr -cr "$(APP_BUNDLE)"
+	# Sign Sparkle framework components inside-out (order matters for notarization)
+	# Downloader.xpc needs --preserve-metadata=entitlements to keep its sandbox network entitlement
+	@SPARKLE_FW="$(APP_CONTENTS)/Frameworks/Sparkle.framework"; \
+	if [ -d "$$SPARKLE_FW" ]; then \
+		codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp \
+			"$$SPARKLE_FW/Versions/B/XPCServices/Installer.xpc"; \
+		codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp \
+			--preserve-metadata=entitlements \
+			"$$SPARKLE_FW/Versions/B/XPCServices/Downloader.xpc"; \
+		codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp \
+			"$$SPARKLE_FW/Versions/B/Autoupdate"; \
+		codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp \
+			"$$SPARKLE_FW/Versions/B/Updater.app"; \
+		codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp \
+			"$$SPARKLE_FW"; \
+	fi
 	codesign --force --sign "$(SIGNING_IDENTITY)" --options runtime --timestamp --entitlements "$(ENTITLEMENTS)" "$(APP_BUNDLE)"
+	@echo "Verifying code signatures..."
+	codesign --verify --deep --strict "$(APP_BUNDLE)"
 	@echo "$(APP_NAME).app assembled at $(APP_BUNDLE)"
 
-dmg: app
+dmg:
+	@test -d "$(APP_BUNDLE)" || $(MAKE) app
 	@echo "Creating DMG..."
 	mkdir -p "$(BUILD_DIR)/dmg-staging"
 	cp -R "$(APP_BUNDLE)" "$(BUILD_DIR)/dmg-staging/"
