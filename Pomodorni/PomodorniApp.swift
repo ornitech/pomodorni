@@ -70,39 +70,45 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         activityMonitor.onNudge = { [weak self] in
             guard let self else { return }
             let isOnBreak = self.engine.state == .running(.shortBreak)
-            if isOnBreak {
-                self.nudgePanel.show(
-                    nextSessionName: nil,
-                    duringBreak: true,
-                    statusItemWindow: self.statusItem?.button?.window,
-                    onSnooze: { [weak self] in
-                        self?.activityMonitor.snooze()
-                    },
-                    onSilence: { [weak self] in
-                        self?.activityMonitor.silenceUntilNextSession()
-                    }
-                )
+
+            let reason: NudgeReason
+            let nextSessionName: String?
+            let onStart: (() -> Void)?
+
+            if isOnBreak && !self.engine.isAutoStartedSession {
+                reason = .duringBreak
+                nextSessionName = nil
+                onStart = nil
+            } else if isOnBreak {
+                reason = .dueForBreak
+                nextSessionName = nil
+                onStart = nil
             } else {
                 let nextSession: String? = self.engine.state.isCompleted ? self.engine.nextSessionName : nil
-                self.nudgePanel.show(
-                    nextSessionName: nextSession,
-                    statusItemWindow: self.statusItem?.button?.window,
-                    onStart: { [weak self] in
-                        guard let self else { return }
-                        if self.engine.state.isCompleted {
-                            self.engine.startNext()
-                        } else {
-                            self.engine.start()
-                        }
-                    },
-                    onSnooze: { [weak self] in
-                        self?.activityMonitor.snooze()
-                    },
-                    onSilence: { [weak self] in
-                        self?.activityMonitor.silenceUntilNextSession()
+                nextSessionName = nextSession
+                reason = nextSession?.lowercased().contains("break") == true ? .dueForBreak : .noActiveSession
+                onStart = { [weak self] in
+                    guard let self else { return }
+                    if self.engine.state.isCompleted {
+                        self.engine.startNext()
+                    } else {
+                        self.engine.start()
                     }
-                )
+                }
             }
+
+            self.nudgePanel.show(
+                reason: reason,
+                nextSessionName: nextSessionName,
+                statusItemWindow: self.statusItem?.button?.window,
+                onStart: onStart,
+                onSnooze: { [weak self] in
+                    self?.activityMonitor.snooze()
+                },
+                onSilence: { [weak self] in
+                    self?.activityMonitor.silenceUntilNextSession()
+                }
+            )
         }
 
         activityMonitor.onDismissNudge = { [weak self] in

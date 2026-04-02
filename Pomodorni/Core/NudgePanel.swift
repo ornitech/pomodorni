@@ -5,8 +5,8 @@ final class NudgePanel {
     private var panel: NSPanel?
 
     func show(
+        reason: NudgeReason = .noActiveSession,
         nextSessionName: String?,
-        duringBreak: Bool = false,
         statusItemWindow: NSWindow?,
         onStart: (() -> Void)? = nil,
         onSnooze: @escaping () -> Void,
@@ -15,8 +15,8 @@ final class NudgePanel {
         dismiss()
 
         let view = NudgeView(
+            reason: reason,
             nextSessionName: nextSessionName,
-            duringBreak: duringBreak,
             onStart: onStart.map { start in
                 { [weak self] in
                     start()
