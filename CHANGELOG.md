@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/ornitech/pomodorni/compare/v1.3.0...v1.3.1) (2026-04-05)
+
+
+### Bug Fixes
+
+* resolve dependencies before tests in pre-commit hook ([#18](https://github.com/ornitech/pomodorni/issues/18)) ([5332b5e](https://github.com/ornitech/pomodorni/commit/5332b5e6d94278679b3702688d65a14430179ed6))
+
 ## [1.3.0](https://github.com/ornitech/pomodorni/compare/v1.2.3...v1.3.0) (2026-04-05)
 
 
