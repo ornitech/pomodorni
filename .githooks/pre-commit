@@ -2,6 +2,7 @@
 # Run tests before allowing commit
 
 echo "Running tests..."
+swift package resolve --quiet 2>/dev/null
 if ! swift test --quiet 2>&1; then
   echo ""
   echo "ERROR: Tests failed. Fix failing tests before committing."
