@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/ornitech/pomodorni/compare/v1.2.3...v1.3.0) (2026-04-05)
+
+
+### Features
+
+* distinguish break-due nudge from break-active nudge ([#17](https://github.com/ornitech/pomodorni/issues/17)) ([4e26ce3](https://github.com/ornitech/pomodorni/commit/4e26ce3eb1731b06a2d00ceccf5d4cbe53c5d419))
+
+
+### Bug Fixes
+
+* use explicit inside-out signing for Sparkle framework ([#14](https://github.com/ornitech/pomodorni/issues/14)) ([67ae131](https://github.com/ornitech/pomodorni/commit/67ae1312648d3825a15d6ee4a67d270fa6cef1a2))
+
 ## [1.2.3](https://github.com/ornitech/pomodorni/compare/v1.2.2...v1.2.3) (2026-03-31)
 
 
