@@ -6,7 +6,7 @@ A lightweight, native macOS menu bar pomodoro timer. No Electron. No bloat. Just
 
 ## Why Pomodorni?
 
-Most pomodoro apps are web wrappers that eat your battery and look out of place on macOS. Pomodorni is built entirely in Swift and SwiftUI -- it lives in your menu bar, launches instantly, and feels like it belongs on your Mac.
+Pomodorni is built entirely in Swift and SwiftUI -- it lives in your menu bar, launches instantly, and feels like it belongs on your Mac.
 
 - **Stays out of your way** -- lives in the menu bar, one click to start
 - **Global keyboard shortcuts** -- control your timer without switching windows
