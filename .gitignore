@@ -10,3 +10,6 @@ DerivedData/
 *.dmg
 *.icns
 *.app/
+
+# Tool state
+.omc/
